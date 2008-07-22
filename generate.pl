@@ -53,7 +53,7 @@ unless (-d 'latest') {
     mkdir 'latest' or die "Can't mkdir(latest): $!";
 }
 
-for ($Iceland_Map, "gmapsupp.img") {
+for ($Iceland_Map, "gmapsupp.img", "13314530.img") {
     unlink "latest/$_" if -l "latest/$_";
     symlink "$date/$_", "latest/$_" or die "symlink($date/$_, latest/$_): $!";
 }

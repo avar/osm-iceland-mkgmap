@@ -17,7 +17,7 @@ my $min_size = 20 * 10 ** 6;
 
 # debugging when we run more than once a day
 if (-d $date) {
-    system "rm $date/*.img" and die $!;
+    system "rm $date/*.img";
 } else {
     mkdir $date or die "Can't mkdir($date): $!";
 }

@@ -1,6 +1,6 @@
 #!/usr/bin/env perl
 use strict;
-my $workdir = '/home/avar/src/OSM-Iceland-mkgmap';
+my $workdir = '/var/www/osm.nix.is/root';
 chdir $workdir or die "Can't chdir($workdir): $!";
 
 my $sleeptime = 60 * 5;

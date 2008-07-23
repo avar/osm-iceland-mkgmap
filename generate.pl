@@ -55,5 +55,5 @@ unless (-d 'latest') {
 
 for ($Iceland_Map, "gmapsupp.img", "13314530.img") {
     unlink "latest/$_" if -l "latest/$_";
-    symlink "$date/$_", "latest/$_" or die "symlink($date/$_, latest/$_): $!";
+    symlink "$workdir/$date/$_", "latest/$_" or die "symlink($date/$_, latest/$_): $!";
 }

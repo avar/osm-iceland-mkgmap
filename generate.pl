@@ -30,6 +30,7 @@ my $ret = system qq[wget -q 'http://www.informationfreeway.org/api/0.5/map?bbox=
 
 if ($ret != 0) {
     warn "Couldn't get $Iceland_Map, sleeping $sleeptime seconds and trying again";
+    unlink $Iceland_Map if -f $Iceland_Map;
     $tried_times += 1;
 
     die "Tried $tried_times already, dying" if ($tried_times > 5);

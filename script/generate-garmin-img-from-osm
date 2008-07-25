@@ -102,7 +102,7 @@ my @generated = glob "*";
 chdir $out_dir or die "Can't chdir($out_dir): $!";
 
 for my $file (@generated) {
-    my $from = catfile($archive_dir, $file);
+    my $from = catfile($today_dir, $file);
     my $to = catfile($latest_dir, $file);
 
     unlink $to if -l $to;

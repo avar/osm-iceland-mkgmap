@@ -1,60 +1,121 @@
 #!/usr/bin/env perl
 use strict;
-my $workdir = '/var/www/osm.nix.is/root';
-chdir $workdir or die "Can't chdir($workdir): $!";
+use warnings;
 
-my $sleeptime = 60 * 5;
-# 8 digit UID for maps, this is pseudol33t for "Iceland", wrarr!
-my $mapname = 13314530;
-my $tried_times = 0;
+use Pod::Usage ();
+use Getopt::Long ();
 
+use File::Spec::Functions qw(catfile catdir);
+
+use LWP::UserAgent ();
+use Data::Validate::URI qw(is_uri);
+
+our $VERSION = '0.01';
+
+=head1 NAME
+
+generate-garmin-img-from-osm - Generate a garmin F<.img> file from an OpenStreetMap F<.osm> file
+
+=head1 SYNOPSIS
+
+generate-garmin-img-from-osm --osm http://download.geofabrik.de/osm/europe/iceland.osm.bz2 --min-osm-size=$((2*10**6)) --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm
+
+=head1 OPTIONS
+
+=over
+
+=item -h, --help
+
+Display this help message
+
+=item --osm
+
+The path to the F<.osm> file, can be an URI in which case the script
+will fetch the file with LWP.
+
+=item --min-osm-size
+
+Minimum size of the F<.osm> file, for sanity checking.
+
+=item --mapname
+
+8 digit UID for the map, see C<mkgmap> help for --mapname for further
+info.
+
+=item --description
+
+Map description.
+
+=item --out-dir
+
+Output directory where we'll create F<archive/> and F<latest/> with
+the F<.osm> and F<.img> files.
+
+=item --out-file
+
+Output F<.osm> filename.
+
+=cut
+
+# Get command line options
+Getopt::Long::Parser->new(
+    config => [ qw(bundling no_ignore_case no_require_order) ],
+)->getoptions(
+    'h|help'         => \my $help,
+    'osm=s'          => \my $osm,
+    'min-osm-size=s' => \my $min_osm_size,
+    'mapname=s'      => \my $mapname,
+    'description=s'  => \my $description,
+    'out-dir=s'      => \my $out_dir,
+    'out-file=s'     => \my $out_file,
+) or help();
+
+help() if $help;
+
+chdir $out_dir or die "Can't chdir($out_dir): $!";
+
+# Directories
+my $archive_dir = catdir($out_dir, 'archive');
+my $latest_dir = catdir($out_dir, 'latest');
 chomp(my $date = `date --iso-8601`);
-my $Iceland_Map = "Iceland.osm";
+my $today_dir = catdir($archive_dir, $date);
+
+system "mkdir -p $today_dir";
+system "mkdir -p $latest_dir";
+
+chdir $today_dir or die "Can't chdir($today_dir): $!";
+
+system "wget -q -O- http://download.geofabrik.de/osm/europe/iceland.osm.bz2 | bzip2 -d - > $out_file" and die "wget: $!";
+
 # Sanity check, should be more than around 20 MB
-my $min_size = 20 * 10 ** 6;
-
-# mkdir/chdir
-
-# debugging when we run more than once a day
-if (-d $date) {
-    system "rm $date/*.img";
-} else {
-    mkdir $date or die "Can't mkdir($date): $!";
-}
-chdir $date or die "Can't chdir($date): $!";
-
-get_osm_map:
-
-# Get the new map
-my $ret = system qq[wget -q 'http://www.informationfreeway.org/api/0.5/map?bbox=-24.6333,63.1833,-13.1333,67.2358' -O $Iceland_Map];
-
-if ($ret != 0) {
-    warn "Couldn't get $Iceland_Map, sleeping $sleeptime seconds and trying again";
-    unlink $Iceland_Map if -f $Iceland_Map;
-    $tried_times += 1;
-
-    die "Tried $tried_times already, dying" if ($tried_times > 5);
-    sleep $sleeptime;
-
-    goto get_osm_map;
-}
-
-# Sanity check
-my $size = ((stat($Iceland_Map))[7]);
-if ($size < $min_size) {
-    die "$Iceland_Map should be more than around 20 MB, it's $size bytes";
+my $size = ((stat($out_file))[7]);
+if ($min_osm_size and $min_osm_size > $size) {
+    die "$out_file should be more than around 20 MB, it's $size bytes";
 }
 
 # Generate!
-system qq[java -jar /home/avar/src/mkgmap/mkgmap-r630/mkgmap.jar --mapname=$mapname --description="Iceland OSM" --latin1 --gmapsupp $Iceland_Map];
+system qq[java -jar /home/avar/src/mkgmap/mkgmap-r630/mkgmap.jar --mapname=$mapname --description="$description" --latin1 --gmapsupp $out_file];
+
+my @generated = glob "*";
 
 # Symlink latest to the new stuff
-chdir $workdir or die "Can't chdir($workdir): $!";
-unless (-d 'latest') {
-    mkdir 'latest' or die "Can't mkdir(latest): $!";
+chdir $out_dir or die "Can't chdir($out_dir): $!";
+
+for my $file (@generated) {
+    my $from = catfile($archive_dir, $file);
+    my $to = catfile($latest_dir, $file);
+
+    unlink $to if -l $to;
+
+    symlink $from, $to or die "symlink($from, $to): $!";
 }
 
-for ($Iceland_Map, "gmapsupp.img", "13314530.img") {
-    unlink "latest/$_" if -l "latest/$_";
-    symlink "$workdir/$date/$_", "latest/$_" or die "symlink($date/$_, latest/$_): $!";
+sub help
+{
+    my %arg = @_;
+
+    Pod::Usage::pod2usage(
+        -verbose => $arg{ verbose },
+        -exitval => $arg{ exitval } || 0,
+    );
 }

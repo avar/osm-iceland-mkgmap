@@ -18,7 +18,7 @@ generate-garmin-img-from-osm - Generate a garmin F<.img> file from an OpenStreet
 
 =head1 SYNOPSIS
 
-generate-garmin-img-from-osm --osm http://download.geofabrik.de/osm/europe/iceland.osm.bz2 --min-osm-size=$((2*10**6)) --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm
+    generate-garmin-img-from-osm --osm http://download.geofabrik.de/osm/europe/iceland.osm.bz2 --min-osm-size=$((2*10**6)) --mkgmap=~/src/mkgmap/dist/mkgmap.jar --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm
 
 =head1 OPTIONS
 
@@ -36,6 +36,10 @@ will fetch the file with LWP.
 =item --min-osm-size
 
 Minimum size of the F<.osm> file, for sanity checking.
+
+=item --mkgmap
+
+The path to the F<mkgmap.jar> file the program should use.
 
 =item --mapname
 
@@ -64,6 +68,7 @@ Getopt::Long::Parser->new(
     'h|help'         => \my $help,
     'osm=s'          => \my $osm,
     'min-osm-size=s' => \my $min_osm_size,
+    'mkgmap=s'       => \my $mkgmap,
     'mapname=s'      => \my $mapname,
     'description=s'  => \my $description,
     'out-dir=s'      => \my $out_dir,
@@ -94,7 +99,10 @@ if ($min_osm_size and $min_osm_size > $size) {
 }
 
 # Generate!
-system qq[java -jar /home/avar/src/mkgmap/mkgmap-r630/mkgmap.jar --mapname=$mapname --description="$description" --latin1 --gmapsupp $out_file];
+system qq[java -jar $mkgmap --mapname=$mapname --description="$description" --latin1 --gmapsupp $out_file];
+
+# Compress the .osm file again
+system qq[bzip2 $out_file];
 
 my @generated = glob "*";
 

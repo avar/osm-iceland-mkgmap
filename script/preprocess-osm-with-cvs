@@ -1,0 +1,356 @@
+#!/usr/bin/perl -w
+use strict;
+use warnings;
+
+use Pod::Usage ();
+use Getopt::Long ();
+
+=head1 NAME
+
+preprocess-osm-with-csv - Preprocess an OSM file with a custom CSV file e.g. for creating a cyclemap
+
+=head1 SYNOPSIS
+
+    preprocess-osm-with-cvs --csv cycling-map-features.csv --osm Iceland.osm --out Icland-cycling.osm
+
+=head1 HISTORY
+
+This is a cleanup of the application found in
+L<http://svn.openstreetmap.org/applications/utils/export/garmincyclemap/preprocess.pl>
+
+I wanted to make it B<only> convent the OSM data without doing
+anything else, a program should do one thing and do it well.
+
+=head1 LICENSE
+
+2008 E<AElig>var ArnfjE<ouml>rE<eth> Bjarmason.
+
+Under the WTFPL like the original program.
+
+=cut
+
+# Get command line options
+Getopt::Long::Parser->new(
+    config => [ qw(bundling no_ignore_case no_require_order) ],
+)->getoptions(
+    'h|help'         => \my $help,
+    'csv=s'          => \my $csv,
+    'osm=s'          => \my $osm,
+    'out=s'          => \my $out,
+) or help();
+
+# -----	Map OSM highway tags to ncn_/rcn_/lcn_ suffixes
+#		so a local route on a trunk road would become lcn_major
+
+my %roads=(
+    'motorway'      => 'major',
+    'motorway_link' => 'major',
+    'trunk'         => 'major',
+    'trunk_link'    => 'major',
+    'primary'       => 'major',
+    'primary_link'  => 'major',
+
+    'secondary'     => 'minor',
+    'tertiary'      => 'minor',
+    'unclassified'  => 'minor',
+    'residential'   => 'minor',
+    'service'       => 'minor',
+    'living_street' => 'minor',
+);
+
+# -----	Read in only the tags we use
+
+my %usetag=(
+    'name'    => 1,
+    'ref'     => 1,
+    'route'   => 1,
+    'ncn'     => 1,
+    'ncn_ref' => 1,
+    'rcn'     => 1,
+    'rcn_ref' => 1,
+    'lcn'     => 1,
+    'lcn_ref' => 1,
+);
+
+# Parse usertag from CSV
+parse_csv_to_usetag($csv, \%usetag);
+
+# Read relations
+my ($wayrefs, $waytypes) = read_relations_from_osm($osm);
+
+my %wayrefs = %$wayrefs;
+my %waytypes = %$waytypes;
+
+# "Reading tags and ways\n";
+no strict;
+
+read_tags_and_ways_from_osm($osm, $out);
+exit 0;
+
+sub help
+{
+    my %arg = @_;
+
+    Pod::Usage::pod2usage(
+        -verbose => $arg{ verbose },
+        -exitval => $arg{ exitval } || 0,
+    );
+}
+
+
+sub Set_Cycle { if ($_[0]<$cycle) { $cycle=$_[0]; } }
+
+sub parse_csv_to_usetag
+{
+    my ($csv, $usetag) = @_;
+    open my $in, "<", $csv or die "Can't open CSV file `$csv': $!";
+
+    while (my $line = <$in>) {
+        chomp $line;
+        if ($line =~ /^ \w+ \| (\w+) /x) {
+            $usetag->{$1} = 1;
+        }
+    }
+}
+
+use constant NODE     => 1;
+use constant WAY      => 2;
+use constant RELATION => 3;
+
+use constant NCN  		  => 1;
+use constant RCN		  => 2;
+use constant LCN		  => 3;
+use constant NCN_PROPOSED => 4;
+use constant RCN_PROPOSED => 5;
+use constant LCN_PROPOSED => 6;
+use constant NONE		  => 9;
+
+sub read_relations_from_osm
+{
+    no strict;
+
+    my ($osm) = @_;
+
+    open my $fh, "<", $osm or die "Can't read OSM file `$osm': $!";
+
+    %wayrefs=();
+    %waytypes=();
+    $in=0;
+
+    while (<$fh>) {
+        chomp ($t=$_);
+        if ($t=~/^  <relation id="(\d+)".+>$/) {
+            $c=$1; print "relation $c     \r";
+            $in=RELATION; %tags=(); @members=();
+            $tags{'type'}=''; $tags{'route'}='bicycle';
+            $tags{'state'}=''; $tags{'network'}='';
+        } elsif ($t =~/^    <member type="way" ref="(\d+)".*\/>$/) {
+            push @members,$1;
+        } elsif ($t =~/^    <tag k="(.+)" v="(.*)"\s*\/>$/ and $in==RELATION) {
+            $tags{$1}=$2;
+        } elsif ($t eq '  </relation>') {
+            $in=0;
+            next if ($tags{'type'} ne 'route');
+            next if ($tags{'route'} ne 'bicycle');
+            # What network are we in? (default LCN)
+            $cycle=LCN; $prefix=''; $suffix='';
+            if ($tags{'network'} eq 'ncn') {
+                $cycle=NCN;
+            } elsif ($tags{'network'} eq 'rcn') {
+                $cycle=RCN; $prefix='R';
+            } elsif ($tags{'network'} eq 'lcn') {
+                $cycle=LCN; $prefix='L';
+            }
+            if ($tags{'state'} eq 'proposed') {
+                $cycle+=(NCN_PROPOSED)-(NCN); $suffix='*';
+            }
+            # What's the ref? (fallback to name if none)
+            $n='';
+            if (exists $tags{'ref'}) {
+                $n=$prefix.$tags{'ref'}.$suffix;
+            } elsif (exists $tags{'name'}) {
+                $n=$tags{'name'}.$suffix;
+            } elsif (exists $tags{'network'}) {
+                $n=$tags{'network'}.$suffix;
+            }
+            if ($n ne '') {
+                $n.=' ';
+            }
+            # Set in all members
+            foreach $m (@members) {
+                if (!exists $waytypes{$m}) {
+                    $waytypes{$m}=$cycle;
+                } elsif ($waytypes{$m}>$cycle) {
+                    $waytypes{$m}=$cycle;
+                }
+                if (!exists $wayrefs{$m}) {
+                    $wayrefs{$m} =$n;
+                } else {
+                    $wayrefs{$m}.=$n;
+                }
+            }
+        }
+    }
+
+    return (\%wayrefs, \%waytypes);
+}
+
+sub read_tags_and_ways_from_osm
+{
+    my ($osm) = @_;
+
+    open my $fh, "<", $osm or die "Can't read OSM file `$osm': $!";
+    open my $ofh, ">", $out or die "Can't open OSM file `$out' for writing: $!";
+
+    no strict;
+    $in = 0;
+
+    while (<$fh>) {
+        chomp ($t=$_);
+        $t=~s/ timestamp="[^"]+"//;
+        if ($t=~/^  <node id="(\d+)".+">$/) {
+            # - Start of node element
+            $c=$1; if ($c=~/[05]0$/) { print "node $c    \r"; }
+            $in=NODE; %tags=();
+        } elsif ($t=~/^  <way id="(\d+)".*>$/) {
+            # - Start of way element
+            $c=$1; if ($c=~/[05]0$/) { print "way $c    \r"; }
+            $in=WAY; %tags=();
+        } elsif ($t eq '  </node>') {
+            # -	End of node element, process tags
+            $in=0;
+            if (exists $tags{'created_by'}) {
+                delete $tags{'created_by'};
+            }
+            foreach $k (keys %tags) {
+                print $ofh "    <tag k=\"$k\" v=\"$tags{$k}\" />\n";
+            }
+        } elsif ($t eq '  </way>') {
+            # - End of way element, process tags
+            $in=0;
+            $refnum=''; $highway='';
+            $cycle=NONE; if (exists $waytypes{$c}) { $cycle=$waytypes{$c}; }
+            $cycleref=''; if (exists $wayrefs{$c}) { $cycleref=$wayrefs{$c}; }
+            if (exists $tags{'ref'}) {
+                $refnum=$tags{'ref'}; delete $tags{'ref'};
+            }
+            if (exists $tags{'highway'}) {
+                $highway=$tags{'highway'}; delete $tags{'highway'};
+            }
+            if (exists $tags{'ncn'}) {
+                if ($tags{'ncn'} eq 'proposed') {
+                    Set_Cycle(NCN_PROPOSED);
+                } else {
+                    Set_Cycle(NCN);
+                } 
+                delete $tags{'ncn'};
+            } elsif (exists $tags{'rcn'}) {
+                if ($tags{'rcn'} eq 'proposed') {
+                    Set_Cycle(RCN_PROPOSED);
+                } else {
+                    Set_Cycle(RCN);
+                }
+                delete $tags{'rcn'};
+            } elsif (exists $tags{'lcn'}) {
+                if ($tags{'lcn'} eq 'proposed') {
+                    Set_Cycle(LCN_PROPOSED);
+                } else {
+                    Set_Cycle(LCN);
+                }
+                delete $tags{'lcn'};
+            }
+            if (exists $tags{'route'}) {
+                if ($tags{'route'} eq 'ncn'	) {
+                    Set_Cycle(NCN);
+                } elsif ($tags{'route'} eq 'rcn'	) {
+                    Set_Cycle(RCN);
+                } elsif ($tags{'route'} eq 'lcn'	) {
+                    Set_Cycle(LCN);
+                }
+                delete $tags{'route'};
+            }
+
+            #	munge ref tag
+            if (exists $tags{'ncn_ref'}) {
+                if ($cycle!=NCN_PROPOSED) {
+                    Set_Cycle(NCN);
+                }
+                $cycleref.=$tags{'ncn_ref'}; delete $tags{'ncn_ref'};
+                if ($cycle==NCN_PROPOSED) {
+                    $cycleref.='*';
+                } 
+                $cycleref.=' ';
+            }
+            if (exists $tags{'rcn_ref'}) {
+                if ($cycle!=RCN_PROPOSED) {
+                    Set_Cycle(RCN);
+                }
+                $cycleref.='R'.$tags{'rcn_ref'}; delete $tags{'rcn_ref'};
+                if ($cycle==RCN_PROPOSED) {
+                    $cycleref.='*';
+                } 
+                $cycleref.=' ';
+            }
+            if (exists $tags{'lcn_ref'}) {
+                if ($cycle!=LCN_PROPOSED) {
+                    Set_Cycle(LCN);
+                }
+                $cycleref.='L'.$tags{'lcn_ref'}; delete $tags{'lcn_ref'};
+                if ($cycle==LCN_PROPOSED) {
+                    $cycleref.='*';
+                }
+                $cycleref.=' ';
+            }
+            $refnum=$cycleref.$refnum; $refnum=~s/\s+$//;
+            if ($refnum) {
+                $tags{'ref'}=$refnum;
+            }
+
+            #	munge highway tag
+            if (exists $roads{$highway}) {
+                $hwp=$roads{$highway};
+            } else {
+                $hwp='offroad';
+            }
+            if ($cycle==NCN         ) {
+                $highway="ncn_$hwp";
+            } elsif ($cycle==NCN_PROPOSED) {
+                $highway="ncn_$hwp";
+            } elsif ($cycle==RCN         ) {
+                $highway="rcn_$hwp";
+            } elsif ($cycle==NCN_PROPOSED) {
+                $highway="rcn_$hwp";
+            } elsif ($cycle==LCN         ) {
+                $highway="lcn_$hwp";
+            } elsif ($cycle==LCN_PROPOSED) {
+                $highway="lcn_$hwp";
+            }
+            if ($highway) {
+                $tags{'highway'}=$highway;
+            }
+
+            #	fix annoying case where name=ref
+            if (exists $tags{'ref'} and exists $tags{'name'}) {
+                if ($tags{'ref'} eq $tags{'name'}) {
+                    delete $tags{'name'};
+                }
+            }
+
+            #	write tags
+            foreach $k (keys %tags) {
+                print $ofh "    <tag k=\"$k\" v=\"$tags{$k}\" />\n";
+            }
+            #			if ($cycle!=NONE or $cycleref) { print "$refnum ($highway)\n"; }
+
+        } elsif ($t =~/^    <tag k="(.+)" v="(.*)"\s*\/>$/) {
+            # - read tag
+            if ($usetag{$1}) {
+                $tags{$1}=$2;
+            }
+            $t="";
+        }
+        if ($t) {
+            $t=~s/^\s+//; print $ofh "$t\n";
+        }
+    }
+}

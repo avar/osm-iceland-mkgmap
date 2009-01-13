@@ -41,6 +41,15 @@ Minimum size of the F<.osm> file, for sanity checking.
 
 The path to the F<mkgmap.jar> file the program should use.
 
+=item --mkgmap-nod
+
+The path to the F<mkgmap.jar> file the program should use for
+generating a routeable map.
+
+=item --osm2mp-dir
+
+The path to the F<osm2mp> directory, for creating routeable maps.
+
 =item --mapname
 
 8 digit UID for the map, see C<mkgmap> help for --mapname for further
@@ -59,6 +68,12 @@ the F<.osm> and F<.img> files.
 
 Output F<.osm> filename.
 
+=item --out-mp
+
+Output F<.mp> filename.
+
+=back
+
 =cut
 
 # Get command line options
@@ -69,10 +84,13 @@ Getopt::Long::Parser->new(
     'osm=s'          => \my $osm,
     'min-osm-size=s' => \my $min_osm_size,
     'mkgmap=s'       => \my $mkgmap,
+    'mkgmap-nod=s'   => \my $mkgmap_nod,
     'mapname=s'      => \my $mapname,
     'description=s'  => \my $description,
+    'osm2mp-dir=s'   => \my $osm2mp_dir,
     'out-dir=s'      => \my $out_dir,
     'out-file=s'     => \my $out_file,
+    'out-mp=s'       => \my $out_mp,
 ) or help();
 
 help() if $help;
@@ -80,23 +98,26 @@ help() if $help;
 chdir $out_dir or die "Can't chdir($out_dir): $!";
 
 # Directories
-my $script_dir          = catdir($out_dir, 'script');
-my $archive_dir         = catdir($out_dir, 'archive');
+my $script_dir                   = catdir($out_dir, 'script');
+my $archive_dir                  = catdir($out_dir, 'archive');
 
-my $latest_dir          = catdir($out_dir, 'latest');
-my $latest_dir_all      = catdir($out_dir, 'latest', 'all');
-my $latest_dir_default  = catdir($out_dir, 'latest', 'default');
-my $latest_dir_cyclemap = catdir($out_dir, 'latest', 'cyclemap');
+my $latest_dir                   = catdir($out_dir, 'latest');
+my $latest_dir_all               = catdir($out_dir, 'latest', 'all');
+my $latest_dir_default           = catdir($out_dir, 'latest', 'default');
+my $latest_dir_default_routeable = catdir($out_dir, 'latest', 'default_routeable');
+my $latest_dir_cyclemap          = catdir($out_dir, 'latest', 'cyclemap');
 
 chomp(my $date = `date --iso-8601`);
-my $today_dir          = catdir($archive_dir, $date);
-my $today_dir_all      = catdir($archive_dir, $date, 'all');
-my $today_dir_default  = catdir($archive_dir, $date, 'default');
-my $today_dir_cyclemap = catdir($archive_dir, $date, 'cyclemap');
+my $today_dir                   = catdir($archive_dir, $date);
+my $today_dir_all               = catdir($archive_dir, $date, 'all');
+my $today_dir_default           = catdir($archive_dir, $date, 'default');
+my $today_dir_default_routeable = catdir($archive_dir, $date, 'default_routeable');
+my $today_dir_cyclemap          = catdir($archive_dir, $date, 'cyclemap');
 
 system "mkdir -p $today_dir";
 system "mkdir -p $today_dir_all";
 system "mkdir -p $today_dir_default";
+system "mkdir -p $today_dir_default_routeable";
 system "mkdir -p $today_dir_cyclemap";
 
 # The rest will be symlinked
@@ -110,8 +131,15 @@ $cycle_out_file =~ s/\./-cycle./;
 
 # Convert to full path
 $out_file = catfile($today_dir, $out_file);
+$out_mp = catfile($today_dir, $out_mp);
+my $out_stats = catfile($today_dir, 'STATS.txt');
 
-system qq[wget --user-agent="See http://wiki.openstreetmap.org/index.php/Garmin_map_of_Iceland" -q -O- http://download.geofabrik.de/osm/europe/iceland.osm.bz2 | bzip2 -d - > $out_file] and die "wget: $!";
+if ($osm =~ /^http/) {
+    system qq[wget --user-agent="See http://wiki.openstreetmap.org/index.php/Garmin_map_of_Iceland" -q -O- $osm | bzip2 -d - > $out_file] and die "wget: $!";
+} else {
+    system qq[cp $osm $out_file] and die "cp: $!";
+}
+
 
 # Sanity check, should be more than around 20 MB
 my $size = ((stat($out_file))[7]);
@@ -134,8 +162,20 @@ my $preprocess = catfile($script_dir, 'preprocess-osm-with-cvs');
 my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv');
 
 system qq[$^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null] and die "preprocess: $!";
-system qq[java -jar $mkgmap --map-features=$cycling_csv --mapname=$mapname --description="$description cyclemap" --latin1 --gmapsupp $out_file] and die "mkgmap: $!";
+system qq[java -enableassertions -jar $mkgmap --map-features=$cycling_csv --mapname=$mapname --description="$description cyclemap" --latin1 --gmapsupp $out_file] and die "mkgmap: $!";
 system qq[bzip2 $cycle_out_file];
+
+## Default routeable
+$mapname += 1;
+
+# run osm2mp on the .osm file to create a .mp file
+chdir $osm2mp_dir or die "Can't chdir($osm2mp_dir): $!";
+
+system qq[$^X osm2mp.pl --nocodepage $out_file > $out_mp 2>$out_stats];
+
+# run mkgmap-nod
+chdir $today_dir_default_routeable or die "Can't chdir($today_dir_default_routeable): $!";
+system qq[java -enableassertions -Xmx1512M -jar $mkgmap_nod --route --gmapsupp --mapname=$mapname --description="$description routeable" --latin1 $out_mp];
 
 ## All
 chdir $today_dir_all or die "Can't chdir($today_dir_all): $!";
@@ -143,8 +183,9 @@ system qq[java -jar $mkgmap --gmapsupp $today_dir_default/gmapsupp.img $today_di
 # urgh, gmapsupp brings some crap along with it, nuke
 map { system "rm $_" } grep { $_ ne 'gmapsupp.img' } glob "*";
 
-# Compress the .osm file again
+# Compress the .osm and .mp files
 system qq[bzip2 $out_file];
+system qq[bzip2 $out_mp];
 
 #
 # Symlink stuff now that we're finished

@@ -83,16 +83,23 @@ unless (-f $outfile) {
         }
     }
 
-    exit 0 if -e $outfile;
+    bz2_outfile($outfile) and exit 0 if -e $outfile;
 
     # 30 mins into the program, hypercube not working, fallback to geofabrik dump
     download_fallback($xapi_uri, $outfile_tmp, $outfile);
 
-    exit 0 if -e $outfile;
+    bz2_outfile($outfile) and exit 0 if -e $outfile;
 
     print STDERR "ERROR: Couldn't download $xapi_uri or $fallback\n";
 
     exit 1;
+}
+
+sub bz2_outfile
+{
+    my $file = shift;
+    system qq[bzip2 $file] and die "bzip2: $!";
+    return 1;
 }
 
 sub download_fallback

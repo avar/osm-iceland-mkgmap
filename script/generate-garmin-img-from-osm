@@ -18,7 +18,17 @@ generate-garmin-img-from-osm - Generate a garmin F<.img> file from an OpenStreet
 
 =head1 SYNOPSIS
 
-    generate-garmin-img-from-osm --osm http://download.geofabrik.de/osm/europe/iceland.osm.bz2 --min-osm-size=$((2*10**6)) --mkgmap=~/src/mkgmap/dist/mkgmap.jar --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm
+    generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/root/dump/$(date --iso-8601).osm.bz2" --min-osm-size=$((2*10**6)) --mkgmap=/home/avar/src/mkgmap/dist/mkgmap.jar --mkgmap-nod=/home/avar/src/mkgmap-nod/dist/mkgmap.jar --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
+
+=head1 DESCRIPTION
+
+Generate maps for L<http://osm.nix.is> in one giant ugly script.
+
+Stick something like this in cron:
+
+    perl /var/www/osm.nix.is/root/script/generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/root/dump/$(date --iso-8601).osm.bz2" --min-osm-size=$((2*10**6)) --mkgmap=/home/avar/src/mkgmap/dist/mkgmap.jar --mkgmap-nod=/home/avar/src/mkgmap-nod/dist/mkgmap.jar --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
+
+Around an hour or so after running F<download-osm-with-retry>.
 
 =head1 OPTIONS
 

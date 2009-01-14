@@ -157,7 +157,10 @@ if ($min_osm_size and $min_osm_size > $size) {
 
 ## Default
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
-system qq[java -jar $mkgmap --mapname=$mapname --description="$description" --latin1 --gmapsupp $out_file] and die "mkgmap: $!";
+system qq[java -jar $mkgmap --mapname=$mapname --description="$description" --latin1 --tdbfile --gmapsupp $out_file] and die "mkgmap: $!";
+# This comes with the the tdb file, nuke
+system qq[mv *.tdb $mapname.tdb] and die "mv: $!";
+system qq[rm 63240000.img] and die "rm(63240000.img): $!";
 
 ## Cyclemap - see http://wiki.openstreetmap.org/index.php/OSM_Map_On_Garmin/Cycle_map
 $mapname += 1;
@@ -166,7 +169,11 @@ my $preprocess = catfile($script_dir, 'preprocess-osm-with-cvs');
 my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv');
 
 system qq[$^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null] and die "preprocess: $!";
-system qq[java -enableassertions -jar $mkgmap --map-features=$cycling_csv --mapname=$mapname --description="$description cyclemap" --latin1 --gmapsupp $out_file] and die "mkgmap: $!";
+system qq[java -enableassertions -jar $mkgmap --map-features=$cycling_csv --mapname=$mapname --description="$description cyclemap" --latin1 --tdbfile --gmapsupp $out_file] and die "mkgmap: $!";
+
+# This comes with the the tdb file, nuke
+system qq[mv *.tdb $mapname.tdb] and die "mv: $!";
+system qq[rm 63240000.img] and die "rm(63240000.img): $!";
 
 #system qq[bzip2 $cycle_out_file];
 # save space
@@ -182,13 +189,17 @@ system qq[$^X osm2mp.pl --nocodepage $out_file > $out_mp 2>$out_stats];
 
 # run mkgmap-nod
 chdir $today_dir_routeable or die "Can't chdir($today_dir_routeable): $!";
-system qq[java -enableassertions -Xmx1512M -jar $mkgmap_nod --route --gmapsupp --mapname=$mapname --description="$description routeable" --latin1 $out_mp];
+system qq[java -enableassertions -Xmx1512M -jar $mkgmap_nod --route --gmapsupp --mapname=$mapname --description="$description routeable" --tdbfile --latin1 $out_mp];
+
+# This comes with the the tdb file, nuke
+system qq[mv *.tdb $mapname.tdb] and die "mv: $!";
+system qq[rm 63240000.img] and die "rm(63240000.img): $!";
 
 ## All
 chdir $today_dir_all or die "Can't chdir($today_dir_all): $!";
 system qq[java -jar $mkgmap --gmapsupp $today_dir_default/gmapsupp.img $today_dir_routeable/gmapsupp.img $today_dir_cyclemap/gmapsupp.img] and die "mkgmap: $!";
 # urgh, gmapsupp brings some crap along with it, nuke
-map { system "rm $_" } grep { $_ ne 'gmapsupp.img' } glob "*";
+map { system "rm $_" } grep { $_ ne 'gmapsupp.img' and $_ !~ /\.tdb$/ } glob "*";
 
 # Compress the .osm and .mp files
 system qq[bzip2 $out_file];

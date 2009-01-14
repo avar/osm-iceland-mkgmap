@@ -98,26 +98,26 @@ help() if $help;
 chdir $out_dir or die "Can't chdir($out_dir): $!";
 
 # Directories
-my $script_dir                   = catdir($out_dir, 'script');
-my $archive_dir                  = catdir($out_dir, 'archive');
+my $script_dir           = catdir($out_dir, 'script');
+my $archive_dir          = catdir($out_dir, 'archive');
 
-my $latest_dir                   = catdir($out_dir, 'latest');
-my $latest_dir_all               = catdir($out_dir, 'latest', 'all');
-my $latest_dir_default           = catdir($out_dir, 'latest', 'default');
-my $latest_dir_default_routeable = catdir($out_dir, 'latest', 'default_routeable');
-my $latest_dir_cyclemap          = catdir($out_dir, 'latest', 'cyclemap');
+my $latest_dir           = catdir($out_dir, 'latest');
+my $latest_dir_all       = catdir($out_dir, 'latest', 'all');
+my $latest_dir_default   = catdir($out_dir, 'latest', 'default');
+my $latest_dir_routeable = catdir($out_dir, 'latest', 'routeable');
+my $latest_dir_cyclemap  = catdir($out_dir, 'latest', 'cyclemap');
 
 chomp(my $date = `date --iso-8601`);
-my $today_dir                   = catdir($archive_dir, $date);
-my $today_dir_all               = catdir($archive_dir, $date, 'all');
-my $today_dir_default           = catdir($archive_dir, $date, 'default');
-my $today_dir_default_routeable = catdir($archive_dir, $date, 'default_routeable');
-my $today_dir_cyclemap          = catdir($archive_dir, $date, 'cyclemap');
+my $today_dir           = catdir($archive_dir, $date);
+my $today_dir_all       = catdir($archive_dir, $date, 'all');
+my $today_dir_default   = catdir($archive_dir, $date, 'default');
+my $today_dir_routeable = catdir($archive_dir, $date, 'routeable');
+my $today_dir_cyclemap  = catdir($archive_dir, $date, 'cyclemap');
 
 system "mkdir -p $today_dir";
 system "mkdir -p $today_dir_all";
 system "mkdir -p $today_dir_default";
-system "mkdir -p $today_dir_default_routeable";
+system "mkdir -p $today_dir_routeable";
 system "mkdir -p $today_dir_cyclemap";
 
 # The rest will be symlinked
@@ -163,7 +163,10 @@ my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv'
 
 system qq[$^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null] and die "preprocess: $!";
 system qq[java -enableassertions -jar $mkgmap --map-features=$cycling_csv --mapname=$mapname --description="$description cyclemap" --latin1 --gmapsupp $out_file] and die "mkgmap: $!";
-system qq[bzip2 $cycle_out_file];
+
+#system qq[bzip2 $cycle_out_file];
+# save space
+system qq[rm $cycle_out_file];
 
 ## Default routeable
 $mapname += 1;
@@ -174,12 +177,12 @@ chdir $osm2mp_dir or die "Can't chdir($osm2mp_dir): $!";
 system qq[$^X osm2mp.pl --nocodepage $out_file > $out_mp 2>$out_stats];
 
 # run mkgmap-nod
-chdir $today_dir_default_routeable or die "Can't chdir($today_dir_default_routeable): $!";
+chdir $today_dir_routeable or die "Can't chdir($today_dir_routeable): $!";
 system qq[java -enableassertions -Xmx1512M -jar $mkgmap_nod --route --gmapsupp --mapname=$mapname --description="$description routeable" --latin1 $out_mp];
 
 ## All
 chdir $today_dir_all or die "Can't chdir($today_dir_all): $!";
-system qq[java -jar $mkgmap --gmapsupp $today_dir_default/gmapsupp.img $today_dir_cyclemap/gmapsupp.img] and die "mkgmap: $!";
+system qq[java -jar $mkgmap --gmapsupp $today_dir_default/gmapsupp.img $today_dir_routeable/gmapsupp.img $today_dir_cyclemap/gmapsupp.img] and die "mkgmap: $!";
 # urgh, gmapsupp brings some crap along with it, nuke
 map { system "rm $_" } grep { $_ ne 'gmapsupp.img' } glob "*";
 

@@ -137,7 +137,11 @@ my $out_stats = catfile($today_dir, 'STATS.txt');
 if ($osm =~ /^http/) {
     system qq[wget --user-agent="See http://wiki.openstreetmap.org/index.php/Garmin_map_of_Iceland" -q -O- $osm | bzip2 -d - > $out_file] and die "wget: $!";
 } else {
-    system qq[cp $osm $out_file] and die "cp: $!";
+    if ($osm =~ /\.bz2/) {
+        system qq[bzcat $osm > $out_file] and die "bzcat cp: $!";
+    } else {
+        system qq[cp $osm $out_file] and die "cp: $!";
+    }
 }
 
 

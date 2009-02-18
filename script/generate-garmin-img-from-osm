@@ -195,7 +195,7 @@ $mapname += 1;
 # run osm2mp on the .osm file to create a .mp file
 chdir $osm2mp_dir or die "Can't chdir($osm2mp_dir): $!";
 
-system qq[$^X osm2mp.pl --nocodepage $out_file > $out_mp 2>$out_stats];
+system qq[$^X osm2mp.pl --codepage 1252 $out_file > $out_mp 2>$out_stats];
 
 # run mkgmap-nod
 chdir $today_dir_routeable or die "Can't chdir($today_dir_routeable): $!";

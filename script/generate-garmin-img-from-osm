@@ -163,7 +163,7 @@ my $country = (defined $country_name ? " --country-name='$country_name' " : '') 
 
 ## Default
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
-system qq[java -jar $mkgmap --mapname=$mapname --description="$description" --latin1 --tdbfile --road-name-pois=0x2900 $country --gmapsupp --route --net $out_file] and die "mkgmap: $!";
+system qq[java -jar $mkgmap --mapname=$mapname --description="$description" --latin1 --tdbfile $country --gmapsupp --route --net $out_file] and die "mkgmap: $!";
 # This comes with the the tdb file, nuke
 system qq[mv *.tdb $mapname.tdb] and die "mv: $!";
 system qq[rm 63240000.img] and die "rm(63240000.img): $!";

@@ -18,7 +18,7 @@ generate-garmin-img-from-osm - Generate a garmin F<.img> file from an OpenStreet
 
 =head1 SYNOPSIS
 
-    generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/root/dump/$(date --iso-8601).osm.bz2" --min-osm-size=$((2*10**6)) --mkgmap=/home/avar/src/mkgmap/dist/mkgmap.jar --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
+    generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/root/dump/$(date --iso-8601).osm.bz2" --date=$(date --iso-8601) --min-osm-size=$((2*10**6)) --mkgmap-dir=/home/avar/src/mkgmap --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
 
 =head1 DESCRIPTION
 
@@ -26,7 +26,7 @@ Generate maps for L<http://osm.nix.is> in one giant ugly script.
 
 Stick something like this in cron:
 
-    perl /var/www/osm.nix.is/root/script/generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/root/dump/$(date --iso-8601).osm.bz2" --min-osm-size=$((2*10**6)) --mkgmap=/home/avar/src/mkgmap/dist/mkgmap.jar --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
+    perl /var/www/osm.nix.is/root/script/generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/root/dump/$(date --iso-8601).osm.bz2" --date=$(date --iso-8601) --min-osm-size=$((2*10**6)) --mkgmap-dir=/home/avar/src/mkgmap --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
 
 Around an hour or so after running F<download-osm-with-retry>.
 
@@ -47,9 +47,10 @@ will fetch the file with LWP.
 
 Minimum size of the F<.osm> file, for sanity checking.
 
-=item --mkgmap
+=item --mkgmap-dir
 
-The path to the F<mkgmap.jar> file the program should use.
+The path to the mkgmap directory, F<dist/mkgmap.jar> should be under
+it.
 
 =item --osm2mp-dir
 
@@ -88,7 +89,7 @@ Getopt::Long::Parser->new(
     'h|help'         => \my $help,
     'osm=s'          => \my $osm,
     'min-osm-size=s' => \my $min_osm_size,
-    'mkgmap=s'       => \my $mkgmap,
+    'mkgmap-dir=s'   => \my $mkgmap_dir,
     'mapname=s'      => \my $mapname,
     'country-name=s' => \my $country_name,
     'country-abbr=s' => \my $country_abbr, # IOC or UNDP code??
@@ -97,6 +98,7 @@ Getopt::Long::Parser->new(
     'out-dir=s'      => \my $out_dir,
     'out-file=s'     => \my $out_file,
     'out-mp=s'       => \my $out_mp,
+    'date=s'         => \(my $date = do { my $d = `date --iso-8601`; chomp $d; $d }),
 ) or help();
 
 help() if $help;
@@ -112,7 +114,6 @@ my $latest_dir_all       = catdir($out_dir, 'latest', 'all');
 my $latest_dir_default   = catdir($out_dir, 'latest', 'default');
 my $latest_dir_cyclemap  = catdir($out_dir, 'latest', 'cyclemap');
 
-chomp(my $date = `date --iso-8601`);
 my $today_dir           = catdir($archive_dir, $date);
 my $today_dir_all       = catdir($archive_dir, $date, 'all');
 my $today_dir_default   = catdir($archive_dir, $date, 'default');
@@ -163,7 +164,7 @@ my $country = (defined $country_name ? " --country-name='$country_name' " : '') 
 
 ## Default
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
-system qq[java -jar $mkgmap --mapname=$mapname --description="$description" --latin1 --tdbfile $country --gmapsupp --route --net $out_file] and die "mkgmap: $!";
+system qq[java -jar $mkgmap_dir/dist/mkgmap.jar --mapname=$mapname --description="$description" --latin1 --tdbfile $country --gmapsupp --route --net $out_file] and die "mkgmap: $!";
 # This comes with the the tdb file, nuke
 system qq[mv *.tdb $mapname.tdb] and die "mv: $!";
 system qq[rm 63240000.img] and die "rm(63240000.img): $!";
@@ -175,7 +176,7 @@ my $preprocess = catfile($script_dir, 'preprocess-osm-with-cvs');
 my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv');
 
 system qq[$^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null] and die "preprocess: $!";
-system qq[java -enableassertions -jar $mkgmap --map-features=$cycling_csv --mapname=$mapname --description="$description cyclemap" --latin1 --road-name-pois $country --tdbfile --gmapsupp $out_file] and die "mkgmap: $!";
+system qq[java -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --map-features=$cycling_csv --mapname=$mapname --description="$description cyclemap" --latin1 --road-name-pois $country --tdbfile --gmapsupp $out_file] and die "mkgmap: $!";
 
 # This comes with the the tdb file, nuke
 system qq[mv *.tdb $mapname.tdb] and die "mv: $!";
@@ -193,23 +194,25 @@ chdir $osm2mp_dir or die "Can't chdir($osm2mp_dir): $!";
 
 system qq[$^X osm2mp.pl --codepage 1252 $out_file > $out_mp 2>$out_stats];
 
-# run mkgmap-nod
-#chdir $today_dir_routeable or die "Can't chdir($today_dir_routeable): $!";
-#system qq[java -enableassertions -Xmx1512M -jar $mkgmap_nod --route --gmapsupp --mapname=$mapname --description="$description routeable" $country --tdbfile --latin1 $out_mp];
-
-# This comes with the the tdb file, nuke
-#system qq[mv *.tdb $mapname.tdb] and die "mv: $!";
-#system qq[rm 63240000.img] and die "rm(63240000.img): $!";
-
 ## All
 chdir $today_dir_all or die "Can't chdir($today_dir_all): $!";
-system qq[java -jar $mkgmap --gmapsupp $today_dir_default/gmapsupp.img $today_dir_cyclemap/gmapsupp.img] and die "mkgmap: $!";
+system qq[java -jar $mkgmap_dir/dist/mkgmap.jar --gmapsupp $today_dir_default/gmapsupp.img $today_dir_cyclemap/gmapsupp.img] and die "mkgmap: $!";
 # urgh, gmapsupp brings some crap along with it, nuke
 map { system "rm $_" } grep { $_ ne 'gmapsupp.img' and $_ !~ /\.tdb$/ } glob "*";
 
 # Compress the .osm and .mp files
 system qq[bzip2 $out_file];
 system qq[bzip2 $out_mp];
+
+## Generate VERSION.txt
+chdir $today_dir or die "Can't chdir($today_dir): $!";
+open my $version, ">", "VERSION.txt" or die "Can't open VERSION.txt: $!";
+print $version "mkgmap\n";
+print $version qx[svn info $mkgmap_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/  /"];
+
+print $version "\nosm2mp\n";
+print $version qx[svn info $osm2mp_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/  /"];
+close $version;
 
 #
 # Symlink stuff now that we're finished

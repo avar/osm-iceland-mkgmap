@@ -3,7 +3,7 @@
 use strict;
 use Date::Calc qw(Add_Delta_Days);
 
-my $osmdiff20 = '~/src/osm/applications/utils/planet.osm/perl/osmdiff20.pl';
+my $osmdiff20 = '~/src/osm-applications-utils-planet.osm-perl/osmdiff20.pl';
 my $latest_osm = '/var/www/osm.nix.is/root/latest/Iceland.osm.bz2';
 my ($today) = qx[date --iso-8601] =~ m/(\S+)/;
 

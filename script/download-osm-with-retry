@@ -14,7 +14,7 @@ download-osm-with-retry - Try really hard to get a bbox from hypercube and fallb
 =head1 SYNOPSIS
 
     download-osm-with-retry --out-dir PATH --fallback FALLBACK-URI PRIMARY-URI
-    download-osm-with-retry --out-dir /var/www/osm.nix.is/root/dump --fallback http://download.geofabrik.de/osm/europe/iceland.osm.bz2 'http://www.informationfreeway.org/api/0.5/*[bbox=-24.6333,63.1833,-13.1333,67]'
+    download-osm-with-retry --out-dir /var/www/osm.nix.is/root/dump --fallback http://download.geofabrik.de/osm/europe/iceland.osm.bz2 ['http://www.informationfreeway.org/api/0.5/*[bbox=-24.6333,63.1833,-13.1333,67]']
 
 =head1 DESCRIPTION
 
@@ -59,7 +59,7 @@ Getopt::Long::Parser->new(
 
 my $xapi_uri = shift;
 
-help() if $help or !$xapi_uri;
+help() if $help;
 
 chomp(my $date = `date --iso-8601`);
 
@@ -72,21 +72,23 @@ my $outfile_tmp = $outfile . '.tmp';
 my $ua          = "See http://wiki.openstreetmap.org/index.php/Garmin_map_of_Iceland";
 
 unless (-f $outfile) {
-    download_xapi($xapi_uri, $outfile_tmp, $outfile);
+    if ($xapi_uri) {
+        download_xapi($xapi_uri, $outfile_tmp, $outfile);
 
-    # If at first you don't succeed...
-    if (!-e $outfile) {
-        for (1..3) {
-            sleep 60 * 10; # 10 mins
-            download_xapi($xapi_uri, $outfile_tmp, $outfile);
-            last if -e $outfile;
+        # If at first you don't succeed...
+        if (!-e $outfile) {
+            for (1..3) {
+                sleep 60 * 10; # 10 mins
+                download_xapi($xapi_uri, $outfile_tmp, $outfile);
+                last if -e $outfile;
+            }
         }
+
+        bz2_outfile($outfile) and exit 0 if -e $outfile;
     }
 
-    bz2_outfile($outfile) and exit 0 if -e $outfile;
-
-    # 30 mins into the program, hypercube not working, fallback to geofabrik dump
-    download_fallback($xapi_uri, $outfile_tmp, $outfile);
+    # Fallback to geofabrik dump
+    download_fallback($fallback, $outfile_tmp, $outfile);
 
     bz2_outfile($outfile) and exit 0 if -e $outfile;
 
@@ -104,12 +106,12 @@ sub bz2_outfile
 
 sub download_fallback
 {
-    my ($url, $tmp, $out) = @_;
+    my ($fallback, $tmp, $out) = @_;
 
-    if ($url =~ /\.bz2$/) {
-        system qq[wget -q --user-agent='$ua' -O- '$fallback' | bzip2 -d - > $outfile_tmp] and die "Can't wget $url: $!";
+    if ($fallback =~ /\.bz2$/) {
+        system qq[wget -q --user-agent='$ua' -O- '$fallback' | bzip2 -d - > $outfile_tmp] and die "Can't wget $fallback: $!";
     } else {
-        system qq[wget -q --user-agent='$ua' -O- '$fallback' > $outfile_tmp] and die "Can't wget $url: $!";
+        system qq[wget -q --user-agent='$ua' -O- '$fallback' > $outfile_tmp] and die "Can't wget $fallback: $!";
     }
 
     if (!$?) {

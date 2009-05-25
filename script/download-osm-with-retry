@@ -14,7 +14,7 @@ download-osm-with-retry - Try really hard to get a bbox from hypercube and fallb
 =head1 SYNOPSIS
 
     download-osm-with-retry --out-dir PATH --fallback FALLBACK-URI PRIMARY-URI
-    download-osm-with-retry --out-dir /var/www/osm.nix.is/root/dump --fallback http://download.geofabrik.de/osm/europe/iceland.osm.bz2 ['http://www.informationfreeway.org/api/0.5/*[bbox=-24.6333,63.1833,-13.1333,67]']
+    download-osm-with-retry --out-dir /var/www/osm.nix.is/dump --fallback http://download.geofabrik.de/osm/europe/iceland.osm.bz2 ['http://www.informationfreeway.org/api/0.5/*[bbox=-24.6333,63.1833,-13.1333,67]']
 
 =head1 DESCRIPTION
 
@@ -24,7 +24,7 @@ in a seperate step:
 
 Stick something like this in cron:
 
-    perl /var/www/osm.nix.is/root/script/download-osm-with-retry --out-dir /var/www/osm.nix.is/root/dump --fallback http://download.geofabrik.de/osm/europe/iceland.osm.bz2 'http://www.informationfreeway.org/api/0.5/*[bbox=-24.6333,63.1833,-13.1333,67]'
+    perl /var/www/osm.nix.is/script/download-osm-with-retry --out-dir /var/www/osm.nix.is/dump --fallback http://download.geofabrik.de/osm/europe/iceland.osm.bz2 'http://www.informationfreeway.org/api/0.5/*[bbox=-24.6333,63.1833,-13.1333,67]'
 
 Around an hour or so before running F<generate-garmin-img-from-osm>.
 

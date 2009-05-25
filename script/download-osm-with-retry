@@ -88,9 +88,9 @@ unless (-f $outfile) {
     }
 
     # Fallback to geofabrik dump
-    download_fallback($fallback, $outfile_tmp, $outfile);
+    my $out = download_fallback($fallback, $outfile_tmp, $outfile);
 
-    bz2_outfile($outfile) and exit 0 if -e $outfile;
+    exit 0 if -e $out;
 
     print STDERR "ERROR: Couldn't download $xapi_uri or $fallback\n";
 
@@ -107,16 +107,18 @@ sub bz2_outfile
 sub download_fallback
 {
     my ($fallback, $tmp, $out) = @_;
+    my $already_compressed = $fallback =~ /\.bz2$/;
 
-    if ($fallback =~ /\.bz2$/) {
-        system qq[wget -q --user-agent='$ua' -O- '$fallback' | bzip2 -d - > $outfile_tmp] and die "Can't wget $fallback: $!";
-    } else {
-        system qq[wget -q --user-agent='$ua' -O- '$fallback' > $outfile_tmp] and die "Can't wget $fallback: $!";
-    }
+    system qq[wget -q --user-agent='$ua' -O $tmp '$fallback'] and die "Can't wget $fallback: $!";
 
     if (!$?) {
         system qq[mv $tmp $out] and die "Can't mv($tmp, $out): $!";
-        return 1;
+        if ($already_compressed) {
+            system qq[mv $out $out.bz2] and die "Can't mv($out, $out.bz2): $!";
+        } else {
+            bz2_outfile($out);
+        }
+        return "$out.bz2";
     }
 
     return;

@@ -18,49 +18,29 @@ chdir $today_diff_dir or die "can't chdir($today_diff_dir): $!";
 
 my %area = (
     # All of Iceland
-    '.' => {
-        size => 1024*8,
-    },
+    '.' => { size => 1024*6 },
 
-    # Some towns
-    Akureyri => {
-        bbox => '-18.1688,65.6443,-18.0487,65.7071',
-        size => 1024*4,
-    },
-    'Akranes' => {
-        bbox => '-22.103,64.3047,-22.025,64.3337',
-        size => 1024*4,
-    },
+    # Towns
+    Akureyri  => { bbox => '-18.1688,65.6443,-18.0487,65.7071' },
+    'Akranes' => { bbox => '-22.103,64.3047,-22.025,64.3337' },
+    'Ólafsfjörður' => { bbox => '-18.6709,66.0666,-18.6304,66.0797' },
+    'Egilsstaðir' => { bbox => '-14.4374,65.2537,-14.3698,65.2939'  },
+    'Ísafjörður' => { bbox => '-23.2193,66.0459,-23.1026,66.0832' },
 
-    'Egilsstaðir' => {
-        bbox => '-14.4374,65.2537,-14.3698,65.2939',
-        size => 1024*4,
-    },
-
-    'Reykjavík_Area' => {
-        bbox => '-22.075,64.03,-21.64,64.201',
-        size => 1024*4,
-    },
-    # Within the Greater Reykjavík Area
-    'Reykjavík' => {
-        bbox => '-22.042,64.092,-21.732,64.181',
-        size => 1024*4,
-    },
-    'Kópavogur' => {
-        bbox => '-21.948,64.074,-21.797,64.123',
-        size => 1024*4,
-    },
-    'Mosfellsbær' => {
-        bbox => '-21.737,64.1483,-21.6494,64.1891',
-        size => 1024*4,
-    },
+    'Greater_Reykjavík_Area' => { bbox => '-22.075,64.03,-21.64,64.201' },
+    # Within the Reykjavík Area
+    'Reykjavík' => { bbox => '-22.042,64.092,-21.732,64.181' },
+    'Kópavogur' => { bbox => '-21.948,64.074,-21.797,64.123' },
+    'Mosfellsbær' => { bbox => '-21.737,64.1483,-21.6494,64.1891' },
 );
 
+my $i = 1;
 my $time = time;
 for my $area (sort keys %area)
 {
+    warn "Generating $area ($i/" . (scalar keys %area) . ")"; $i++;
     my $bbox = $area{$area}->{bbox};
-    my $size = $area{$area}->{size};
+    my $size = $area{$area}->{size} // 1024*2;
 
     my $outdir = catdir($today_diff_dir, $area);
 
@@ -75,7 +55,12 @@ for my $area (sort keys %area)
 }
 
 #
-# link latest to today's generated stuff
+# Delete temporary .osm files
+#
+system qq[find $today_diff_dir -type f -name '*.osm' -exec rm -v {} \;];
+
+#
+# link latest to todays generated stuff
 #
 if (-l $latest_diff_dir) {
     unlink $latest_diff_dir or die "unlink($latest_diff_dir): $!";
@@ -108,8 +93,8 @@ sub generate_area
         my $from = "$outdir/$year-$month-$day.osm";
         my $to   = "$outdir/$today.osm";
 
-        my $from_osmosis_cmd = qq[$osmosis --read-xml $from_file_orig --bounding-box $osmosis_bbox --write-xml '$from'];
-        my $to_osmosis_cmd   = qq[$osmosis --read-xml $to_file_orig --bounding-box $osmosis_bbox --write-xml '$to'];
+        my $from_osmosis_cmd = qq[$osmosis -q --read-xml $from_file_orig --bounding-box completeWays=yes $osmosis_bbox --write-xml '$from'];
+        my $to_osmosis_cmd   = qq[$osmosis -q --read-xml $to_file_orig --bounding-box completeWays=yes $osmosis_bbox --write-xml '$to'];
 
         system $from_osmosis_cmd and die "Can't execute `$from_osmosis_cmd': $!";
         system $to_osmosis_cmd and die "Can't execute `$to_osmosis_cmd': $!";

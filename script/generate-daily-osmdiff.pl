@@ -57,7 +57,7 @@ for my $area (sort keys %area)
 #
 # Delete temporary .osm files
 #
-system qq[find $today_diff_dir -type f -name '*.osm' -exec rm -v {} \;];
+system qq[find $today_diff_dir -type f -name '*.osm' -exec rm -v {} \\;];
 
 #
 # link latest to todays generated stuff
@@ -93,8 +93,8 @@ sub generate_area
         my $from = "$outdir/$year-$month-$day.osm";
         my $to   = "$outdir/$today.osm";
 
-        my $from_osmosis_cmd = qq[$osmosis -q --read-xml $from_file_orig --bounding-box completeWays=yes $osmosis_bbox --write-xml '$from'];
-        my $to_osmosis_cmd   = qq[$osmosis -q --read-xml $to_file_orig --bounding-box completeWays=yes $osmosis_bbox --write-xml '$to'];
+        my $from_osmosis_cmd = qq[$osmosis --read-xml $from_file_orig --bounding-box completeWays=no $osmosis_bbox --write-xml '$from'];
+        my $to_osmosis_cmd   = qq[$osmosis --read-xml $to_file_orig --bounding-box completeWays=no $osmosis_bbox --write-xml '$to'];
 
         system $from_osmosis_cmd and die "Can't execute `$from_osmosis_cmd': $!";
         system $to_osmosis_cmd and die "Can't execute `$to_osmosis_cmd': $!";

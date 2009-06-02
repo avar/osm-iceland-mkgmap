@@ -97,7 +97,11 @@ sub generate_area
         my $to_osmosis_cmd   = qq[$osmosis --read-xml $to_file_orig --bounding-box completeWays=no $osmosis_bbox --write-xml '$to'];
 
         system $from_osmosis_cmd and die "Can't execute `$from_osmosis_cmd': $!";
-        system $to_osmosis_cmd and die "Can't execute `$to_osmosis_cmd': $!";
+        if (-f $to and not -z $to) {
+            warn "`$to' already exists, no need to generate it";
+        } else {
+            system $to_osmosis_cmd and die "Can't execute `$to_osmosis_cmd': $!";
+        }
 
         $from_file = $from;
         $to_file   = $to;

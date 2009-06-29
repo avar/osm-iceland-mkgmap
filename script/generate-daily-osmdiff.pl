@@ -1,20 +1,28 @@
 #!/usr/bin/perl
-# Originally written by Björgvin Ragnarsson, modified by Ævar Arnfjörð Bjarmason
 use feature ':5.10';
 use strict;
+use DateTime;
 use Date::Calc qw(Add_Delta_Days);
 use File::Path qw(mkpath);
 use File::Spec::Functions qw(catdir catfile);
 
+use Getopt::Long ();
+
+# Get command line options
+Getopt::Long::Parser->new(
+    config => [ qw(bundling no_ignore_case no_require_order) ],
+)->getoptions(
+    'date=s' => \(my ($date) = qx[date --iso-8601] =~ m/(\S+)/),
+) or die "Can't getoptions()";
+
 my $osmdiff20 = '~/src/osm-applications-utils-planet.osm-perl/osmdiff20.pl';
 my $osmosis   = '~/src/osm/applications/utils/osmosis/trunk/bin/osmosis';
-my ($today) = qx[date --iso-8601] =~ m/(\S+)/;
-my $today_osm_dir  = "/var/www/osm.nix.is/archive/$today";
-my $today_diff_dir  = "/var/www/osm.nix.is/diff/archive/$today";
+my $date_osm_dir  = "/var/www/osm.nix.is/archive/$date";
+my $date_diff_dir  = "/var/www/osm.nix.is/diff/archive/$date";
 my $latest_diff_dir = "/var/www/osm.nix.is/diff/latest";
 
-system "mkdir -p $today_diff_dir" and die "mkdir -p $today_diff_dir: $!";
-chdir $today_diff_dir or die "can't chdir($today_diff_dir): $!";
+system "mkdir -p $date_diff_dir" and die "mkdir -p $date_diff_dir: $!";
+chdir $date_diff_dir or die "can't chdir($date_diff_dir): $!";
 
 my %area = (
     # All of Iceland
@@ -26,6 +34,7 @@ my %area = (
     'Ólafsfjörður' => { bbox => '-18.6709,66.0666,-18.6304,66.0797' },
     'Egilsstaðir' => { bbox => '-14.4374,65.2537,-14.3698,65.2939'  },
     'Ísafjörður' => { bbox => '-23.2193,66.0459,-23.1026,66.0832' },
+    'Ásbrú' => { bbox => '-22.6008,63.9569,-22.548,63.9827' },
 
     'Greater_Reykjavík_Area' => { bbox => '-22.075,64.03,-21.64,64.201' },
     # Within the Reykjavík Area
@@ -34,15 +43,15 @@ my %area = (
     'Mosfellsbær' => { bbox => '-21.737,64.1483,-21.6494,64.1891' },
 );
 
-my $i = 1;
-my $time = time;
-for my $area (sort keys %area)
+my ($year, $month, $day) = $date =~ /^(\d+)-(\d+)-(\d+)$/;
+my $time = DateTime->new(year => $year, month => $month, day => $day)->epoch;
+my $i = 1; for my $area (sort keys %area)
 {
     warn "Generating $area ($i/" . (scalar keys %area) . ")"; $i++;
     my $bbox = $area{$area}->{bbox};
     my $size = $area{$area}->{size} // 1024*2;
 
-    my $outdir = catdir($today_diff_dir, $area);
+    my $outdir = catdir($date_diff_dir, $area);
 
     # Day
     generate_area($time, -1, '01-day', $bbox, $size, $outdir);
@@ -57,7 +66,7 @@ for my $area (sort keys %area)
 #
 # Delete temporary .osm files
 #
-system qq[find $today_diff_dir -type f -name '*.osm' -exec rm -v {} \\;];
+system qq[find $date_diff_dir -type f -name '*.osm' -exec rm -v {} \\;];
 
 #
 # link latest to todays generated stuff
@@ -65,7 +74,7 @@ system qq[find $today_diff_dir -type f -name '*.osm' -exec rm -v {} \\;];
 if (-l $latest_diff_dir) {
     unlink $latest_diff_dir or die "unlink($latest_diff_dir): $!";
 }
-symlink($today_diff_dir, $latest_diff_dir) or die "symlink($today_diff_dir, $latest_diff_dir): $!";
+symlink($date_diff_dir, $latest_diff_dir) or die "symlink($date_diff_dir, $latest_diff_dir): $!";
 
 exit 0;
 
@@ -82,7 +91,7 @@ sub generate_area
     my $day = sprintf "%02i", $day_no_leading;
 
     my $from_file_orig = "/var/www/osm.nix.is/archive/$year-$month-$day/Iceland.osm.bz2";
-    my $to_file_orig   = catfile($today_osm_dir, 'Iceland.osm.bz2');
+    my $to_file_orig   = catfile($date_osm_dir, 'Iceland.osm.bz2');
     my ($from_file, $to_file);
 
     unless ($bbox) {
@@ -91,7 +100,7 @@ sub generate_area
     } else {
         my $osmosis_bbox = bbox_to_osmosis_bbox($bbox);
         my $from = "$outdir/$year-$month-$day.osm";
-        my $to   = "$outdir/$today.osm";
+        my $to   = "$outdir/$date.osm";
 
         my $from_osmosis_cmd = qq[$osmosis --read-xml $from_file_orig --bounding-box completeWays=no $osmosis_bbox --write-xml '$from'];
         my $to_osmosis_cmd   = qq[$osmosis --read-xml $to_file_orig --bounding-box completeWays=no $osmosis_bbox --write-xml '$to'];
@@ -107,7 +116,8 @@ sub generate_area
         $to_file   = $to;
     }
 
-    system "$^X $osmdiff20 $from_file $to_file $label.html $label.png $size" and die "Can't osmdiff: $!";
+    my $cmd = "$^X $osmdiff20 $from_file $to_file $label.html $label.png $size";
+    system $cmd and die "Can't osmdiff ($!): $cmd";
 }
 
 sub bbox_to_osmosis_bbox

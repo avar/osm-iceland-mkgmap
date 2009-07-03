@@ -9,6 +9,7 @@ use File::Spec::Functions qw(catfile catdir);
 
 use LWP::UserAgent ();
 use Data::Validate::URI qw(is_uri);
+use FindBin qw($Bin);
 
 our $VERSION = '0.01';
 
@@ -106,7 +107,7 @@ help() if $help;
 chdir $out_dir or die "Can't chdir($out_dir): $!";
 
 # Directories
-my $script_dir           = catdir($out_dir, 'script');
+my $script_dir           = $Bin;
 my $archive_dir          = catdir($out_dir, 'archive');
 
 my $latest_dir           = catdir($out_dir, 'latest');

@@ -165,7 +165,7 @@ my $country = (defined $country_name ? " --country-name='$country_name' " : '') 
 
 ## Default
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
-system qq[java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar --mapname=$mapname --description="$description" --latin1 --tdbfile $country --gmapsupp --route --net $out_file] and die "mkgmap: $!";
+system qq[java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar --generate-sea --mapname=$mapname --description="$description" --latin1 --tdbfile $country --gmapsupp --route --net $out_file] and die "mkgmap: $!";
 # This comes with the the tdb file, nuke
 system qq[mv *.tdb $mapname.tdb] and die "mv: $!";
 system qq[rm 63240000.img] and die "rm(63240000.img): $!";
@@ -177,7 +177,7 @@ my $preprocess = catfile($script_dir, 'preprocess-osm-with-cvs');
 my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv');
 
 system qq[$^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null] and die "preprocess: $!";
-system qq[java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --map-features=$cycling_csv --mapname=$mapname --description="$description cyclemap" --latin1 --road-name-pois $country --tdbfile --gmapsupp $out_file] and die "mkgmap: $!";
+system qq[java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --map-features=$cycling_csv --generate-sea --mapname=$mapname --description="$description cyclemap" --latin1 --road-name-pois $country --tdbfile --gmapsupp $out_file] and die "mkgmap: $!";
 
 # This comes with the the tdb file, nuke
 system qq[mv *.tdb $mapname.tdb] and die "mv: $!";
@@ -190,10 +190,12 @@ system qq[rm $cycle_out_file];
 ## Default routeable
 #$mapname += 1;
 
-# run osm2mp on the .osm file to create a .mp file
-chdir $osm2mp_dir or die "Can't chdir($osm2mp_dir): $!";
+if ($osm2mp_dir) {
+    # run osm2mp on the .osm file to create a .mp file
+    chdir $osm2mp_dir or die "Can't chdir($osm2mp_dir): $!";
 
-system qq[$^X osm2mp.pl --codepage 1252 $out_file > $out_mp 2>$out_stats];
+    system qq[$^X osm2mp.pl --codepage 1252 $out_file > $out_mp 2>$out_stats];
+}
 
 ## All
 chdir $today_dir_all or die "Can't chdir($today_dir_all): $!";
@@ -203,7 +205,9 @@ map { system "rm $_" } grep { $_ ne 'gmapsupp.img' and $_ !~ /\.tdb$/ } glob "*"
 
 # Compress the .osm and .mp files
 system qq[bzip2 $out_file];
-system qq[bzip2 $out_mp];
+if ($osm2mp_dir) {
+    system qq[bzip2 $out_mp];
+}
 
 ## Generate VERSION.txt
 chdir $today_dir or die "Can't chdir($today_dir): $!";
@@ -211,8 +215,11 @@ open my $version, ">", "VERSION.txt" or die "Can't open VERSION.txt: $!";
 print $version "mkgmap\n";
 print $version qx[svn info $mkgmap_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/  /"];
 
-print $version "\nosm2mp\n";
-print $version qx[svn info $osm2mp_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/  /"];
+if ($osm2mp_dir) {
+    print $version "\nosm2mp\n";
+    print $version qx[svn info $osm2mp_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/  /"];
+}
+
 close $version;
 
 #

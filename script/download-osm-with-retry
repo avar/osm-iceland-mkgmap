@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+use feature ':5.10';
 use strict;
 use warnings;
 
@@ -57,6 +58,8 @@ Getopt::Long::Parser->new(
     'out-dir=s'      => \my $out_dir,
 ) or help();
 
+select STDERR;
+
 my $xapi_uri = shift;
 
 help() if $help;
@@ -87,12 +90,13 @@ unless (-f $outfile) {
         bz2_outfile($outfile) and exit 0 if -e $outfile;
     }
 
+    say "Downloading fallback URL $fallback";
     # Fallback to geofabrik dump
     my $out = download_fallback($fallback, $outfile_tmp, $outfile);
 
     exit 0 if -e $out;
 
-    print STDERR "ERROR: Couldn't download $xapi_uri or $fallback\n";
+    say "ERROR: Couldn't download $xapi_uri or $fallback\n";
 
     exit 1;
 }

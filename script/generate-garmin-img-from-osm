@@ -102,6 +102,8 @@ Getopt::Long::Parser->new(
     'date=s'         => \(my $date = do { my $d = `date --iso-8601`; chomp $d; $d }),
 ) or help();
 
+my $real_date = `date --iso-8601`; chomp $real_date;
+
 help() if $help;
 
 chdir $out_dir or die "Can't chdir($out_dir): $!";
@@ -228,14 +230,17 @@ my @generated = glob "*";
 # Symlink latest to the new stuff
 chdir $out_dir or die "Can't chdir($out_dir): $!";
 
+# If I'm generating a map file for some day in the past I don't want
+# to replace latest/
+if ($date eq $real_date) {
+    for my $file (@generated) {
+        my $from = catfile($today_dir, $file);
+        my $to = catfile($latest_dir, $file);
 
-for my $file (@generated) {
-    my $from = catfile($today_dir, $file);
-    my $to = catfile($latest_dir, $file);
+        unlink $to if -l $to;
 
-    unlink $to if -l $to;
-
-    symlink $from, $to or die "symlink($from, $to): $!";
+        symlink $from, $to or die "symlink($from, $to): $!";
+    }
 }
 
 sub help

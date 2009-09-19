@@ -167,7 +167,7 @@ my $country = (defined $country_name ? " --country-name='$country_name' " : '') 
 
 ## Default
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
-my $cmd = qq[java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM_ICE" --tdbfile $country --gmapsupp --route --net $out_file];
+my $cmd = qq[java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
 system $cmd and die "mkgmap: $!";
 
 ## Cyclemap - see http://wiki.openstreetmap.org/index.php/OSM_Map_On_Garmin/Cycle_map
@@ -178,7 +178,7 @@ my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv'
 
 $cmd = qq[$^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null];
 system $cmd and die "preprocess: $!";
-$cmd = qq[java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --map-features=$cycling_csv --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM_ICE" --tdbfile $country --gmapsupp --route --net $out_file];
+$cmd = qq[java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --map-features=$cycling_csv --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
 system $cmd and die "mkgmap: $!";
 
 #system qq[bzip2 $cycle_out_file];
@@ -210,15 +210,30 @@ if ($osm2mp_dir) {
 ## Generate VERSION.txt
 chdir $today_dir or die "Can't chdir($today_dir): $!";
 open my $version, ">", "VERSION.txt" or die "Can't open VERSION.txt: $!";
-print $version "mkgmap\n";
-print $version qx[svn info $mkgmap_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/  /"];
+
+print $version "This map package from http://osm.nix.is was generated using\n";
+print $version "OpenStreetMap data from $date\n";
+print $version "\n";
+print $version "Versions of programs used to build the package:\n";
+print $version "  mkgmap\n";
+print $version qx[svn info $mkgmap_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/    /"];
 
 if ($osm2mp_dir) {
-    print $version "\nosm2mp\n";
-    print $version qx[svn info $osm2mp_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/  /"];
+    print $version "\n  osm2mp\n";
+    print $version qx[svn info $osm2mp_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/    /"];
 }
 
 close $version;
+
+#
+# Generate MapSource installer for the default map
+#
+my $gmi_dir = '/home/avar/src/garmin-mapsource-installer/dist';
+chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
+system "cp -v ../VERSION.txt ." and die "cp: $!";
+system "unix2dos VERSION.txt" and die "unix2dos: $!";
+system "zip -j OSM_IS_default.zip [0-9]*img [0-9]*tdb VERSION.txt $gmi_dir/Setup.exe $gmi_dir/garmin-mapsource-installer.ini" and die "zip: $!";
+system "rm -v VERSION.txt" and die "rm: $!";
 
 #
 # Symlink stuff now that we're finished

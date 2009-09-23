@@ -116,6 +116,10 @@ sub generate_area
         $to_file   = $to;
     }
 
+    if (not -f $from_file or not -f $to_file) {
+        die "Both input files need to exist:\n" . `du -sh $from_file $to_file`;
+    }
+
     my $cmd = "$^X $osmdiff20 $from_file $to_file $label.html $label.png $size";
     system $cmd and die "Can't osmdiff ($!): $cmd";
 }

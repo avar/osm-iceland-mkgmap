@@ -94,11 +94,15 @@ unless (-f $outfile) {
     # Fallback to geofabrik dump
     my $out = download_fallback($fallback, $outfile_tmp, $outfile);
 
-    exit 0 if -e $out;
-
-    say "ERROR: Couldn't download $xapi_uri or $fallback\n";
-
-    exit 1;
+    if (-f $out) {
+        # Debugging
+        say `du -sh $out`;
+        say `stat $out`;
+        exit 0;
+    } else {
+        say "ERROR: Couldn't download $xapi_uri or $fallback\n";
+        exit 1;
+    }
 }
 
 sub bz2_outfile

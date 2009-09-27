@@ -230,10 +230,10 @@ close $version;
 #
 my $gmi_dir = '/home/avar/src/garmin-mapsource-installer/dist';
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
-system "cp -v ../VERSION.txt ." and die "cp: $!";
+system "cp ../VERSION.txt ." and die "cp: $!";
 system "unix2dos VERSION.txt" and die "unix2dos: $!";
-system "zip -j OSM_IS_default.zip [0-9]*img [0-9]*tdb VERSION.txt $gmi_dir/Setup.exe $gmi_dir/garmin-mapsource-installer.ini" and die "zip: $!";
-system "rm -v VERSION.txt" and die "rm: $!";
+system "zip --quiet -j OSM_IS_default.zip [0-9]*img [0-9]*tdb VERSION.txt $gmi_dir/Setup.exe $gmi_dir/garmin-mapsource-installer.ini"  and die "zip: $!";
+system "rm VERSION.txt" and die "rm: $!";
 
 #
 # Symlink stuff now that we're finished

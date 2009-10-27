@@ -167,7 +167,7 @@ my $country = (defined $country_name ? " --country-name='$country_name' " : '') 
 
 ## Default
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
-my $cmd = qq[java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar --remove-short-arcs --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
+my $cmd = qq[java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar  --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
 system $cmd and die "mkgmap: $!";
 
 ## Cyclemap - see http://wiki.openstreetmap.org/index.php/OSM_Map_On_Garmin/Cycle_map
@@ -178,7 +178,7 @@ my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv'
 
 $cmd = qq[$^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null];
 system $cmd and die "preprocess: $!";
-$cmd = qq[java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --map-features=$cycling_csv --remove-short-arcs --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
+$cmd = qq[java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --map-features=$cycling_csv  --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
 system $cmd and die "mkgmap: $!";
 
 #system qq[bzip2 $cycle_out_file];

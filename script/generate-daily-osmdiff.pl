@@ -16,7 +16,7 @@ Getopt::Long::Parser->new(
 ) or die "Can't getoptions()";
 
 my $osmdiff20 = '~/src/osm-applications-utils-planet.osm-perl/osmdiff20.pl';
-my $osmosis   = '~/src/osm/applications/utils/osmosis/trunk/bin/osmosis';
+my $osmosis   = '~/src/osm-applications-utils-osmosis-trunk/bin/osmosis';
 my $date_osm_dir  = "/var/www/osm.nix.is/archive/$date";
 my $date_diff_dir  = "/var/www/osm.nix.is/diff/archive/$date";
 my $latest_diff_dir = "/var/www/osm.nix.is/diff/latest";

@@ -15,6 +15,10 @@ Getopt::Long::Parser->new(
     'date=s' => \(my ($date) = qx[date --iso-8601] =~ m/(\S+)/),
 ) or die "Can't getoptions()";
 
+# The time we're generating from
+my ($year, $month, $day) = $date =~ /^(\d+)-(\d+)-(\d+)$/;
+my $time = DateTime->new(year => $year, month => $month, day => $day)->epoch;
+
 my $osmdiff20 = '~/src/osm-applications-utils-planet.osm-perl/osmdiff20.pl';
 my $osmosis   = '~/src/osm-applications-utils-osmosis-trunk/bin/osmosis';
 my $date_osm_dir  = "/var/www/osm.nix.is/archive/$date";
@@ -65,38 +69,78 @@ my %area = (
     'Hafnafjörður' => { bbox => '-22.0014,64.0348,-21.9118,64.0845' },
 );
 
-my ($year, $month, $day) = $date =~ /^(\d+)-(\d+)-(\d+)$/;
-my $time = DateTime->new(year => $year, month => $month, day => $day)->epoch;
-my $i = 1; for my $area (sort keys %area)
-{
-    warn "Generating $area ($i/" . (scalar keys %area) . ")"; $i++;
-    my $bbox = $area{$area}->{bbox};
-    my $size = $area{$area}->{size} // 1024*2;
+my @periods = (
+    { label => '00-now', delta => 0      , generate => 0, err => 0},
+    { label => '01-day', delta => -1     , generate => 1, err => 0},
+    { label => '07-week', delta => -7    , generate => 1, err => 0},
+    { label => '30-month', delta => -30  , generate => 1, err => 0},
+    { label => '365-year', delta => -365 , generate => 1, err => 0},
+);
 
-    my $outdir = catdir($date_diff_dir, $area);
+# Generate .osm files with osmosis
+for my $period (@periods) {
+    my $delta = $period->{delta};
+    my ($date, $base_file)= osm_file_delta_ago($time, $delta);
+    my $v = osm_version($base_file);
 
-    # Day
-    generate_area($time, -1, '01-day', $bbox, $size, $outdir);
+    if (not -f $base_file and $delta < -30) {
+        #warn "Not generating delta $delta";
+        $period->{generate} = 0;
+        next;
+    } elsif (not -f $base_file) {
+        # It's an error if we can't generate the day/week/month files
+        $period->{generate} = 0;
+        $period->{err} = 1;
+    }
 
-    # Week
-    generate_area($time, -7, '07-week', $bbox, $size, $outdir);
+    my @dirs;
+    my $cmd;
+    $cmd .= "$osmosis -quiet \\\n";
+    $cmd .= "  --read-xml-$v $base_file \\\n";
+    $cmd .= "  --tee-$v " . ((scalar keys %area)) . " \\\n";
+    for my $area (sort keys %area) {
+        my $bbox = $area{$area}->{bbox};
+        my $bbox_cmd = '';
+        if ($bbox) {
+            my $osmosis_bbox = bbox_to_osmosis_bbox($bbox);
+            $bbox_cmd = "--bounding-box-$v completeWays=no $osmosis_bbox ";
+        }
+        my $out_dir = catdir($date_diff_dir, $area);
+        push @dirs => $out_dir;
+        $cmd .= "  ${bbox_cmd}--write-xml-$v '$out_dir/$date.osm' \\\n";
+    }
+    $cmd =~ s[ \\$][];
 
-    # Month
-    generate_area($time, -30, '30-month', $bbox, $size, $outdir);
+    # mkdirs
+    for my $outdir (@dirs) {
+        system "mkdir -p '$outdir'" and die "mkdir -p '$outdir': $!";
+        chdir $outdir or die "can't chdir($outdir): $!";
+    }
 
-    # Maybe year
-    my $delta = -365;
-    my ($sec, $min, $hour, $mday, $mon, $y, $wday, $yday, $isdst) = localtime $time;
-    my ($year, $month_no_leading, $day_no_leading) = Add_Delta_Days(1900+$y, $mon+1, $mday, $delta);
-    my $month = sprintf "%02i", $month_no_leading;
-    my $day = sprintf "%02i", $day_no_leading;
-    my $from_file_orig = "/var/www/osm.nix.is/archive/$year-$month-$day/Iceland.osm.bz2";
-    if (-f $from_file_orig) {
-        generate_area($time, $delta, '365-year', $bbox, $size, $outdir);
+    # osmosis
+    #say $cmd;
+    system $cmd and die "Can't execute `$cmd': $!";
+}
+
+# Generate diffs
+for my $period (@periods) {
+    my $delta = $period->{delta};
+    my $label = $period->{label};
+    my $generate = $period->{generate};
+
+    # Skipping this one
+    next unless $generate;
+
+    my $i = 1; for my $area (sort keys %area) {
+        #warn "Generating $area ($i/" . (scalar keys %area) . ")"; $i++;
+        my $size = $area{$area}->{size} // 1024*2;
+
+        my $outdir = catdir($date_diff_dir, $area);
+
+        generate_area($time, $delta, $label, $size, $outdir);
     }
 }
 
-#
 # Delete temporary .osm files
 #
 system qq[find $date_diff_dir -type f -name '*.osm' -exec rm -v {} \\;];
@@ -109,54 +153,56 @@ if (-l $latest_diff_dir) {
 }
 symlink($date_diff_dir, $latest_diff_dir) or die "symlink($date_diff_dir, $latest_diff_dir): $!";
 
+if (my @err = grep { $_->{err} } @periods) (
+    say STDERR "Error came up when when generating osmosis delta $_->{delta}" for @err;
+    exit 1;
+}
+
 exit 0;
 
 sub generate_area
 {
-    my ($time, $delta, $label, $bbox, $size, $outdir) = @_;
+    my ($time, $delta, $label, $size, $outdir) = @_;
     my ($sec, $min, $hour, $mday, $mon, $y, $wday, $yday, $isdst) = localtime $time;
 
-    system "mkdir -p '$outdir'" and die "mkdir -p '$outdir': $!";
+    unless (-d $outdir) {
+        system "mkdir -p '$outdir'" and die "mkdir -p '$outdir': $!";
+    }
     chdir $outdir or die "can't chdir($outdir): $!";
 
+    my $from = osm_file_delta_ago($time, $delta);
+    my $to = osm_file_delta_ago($time, 0);
+
+    if (not -f $from or not -f $to) {
+        die "Both input files need to exist:\n" . `du -sh $from $to`;
+    }
+
+    my $cmd = "$^X $osmdiff20 $from $to $label.html $label.png $size > /dev/null";
+    system $cmd and die "Can't osmdiff ($!): $cmd";
+}
+
+sub osm_file_delta_ago
+{
+    my ($time, $delta) = @_;
+
+    my ($sec, $min, $hour, $mday, $mon, $y, $wday, $yday, $isdst) = localtime $time;
     my ($year, $month_no_leading, $day_no_leading) = Add_Delta_Days(1900+$y, $mon+1, $mday, $delta);
     my $month = sprintf "%02i", $month_no_leading;
     my $day = sprintf "%02i", $day_no_leading;
-
-    my $from_file_orig = "/var/www/osm.nix.is/archive/$year-$month-$day/Iceland.osm.bz2";
-    my ($fv) = qx[bzcat $from_file_orig | head -n2 | grep "^<osm"] =~ /version="(.*?)"/;
-    my $to_file_orig   = catfile($date_osm_dir, 'Iceland.osm.bz2');
-    my ($tv) = qx[bzcat $to_file_orig | head -n2 | grep "^<osm"] =~ /version="(.*?)"/;
-    my ($from_file, $to_file);
-
-    unless ($bbox) {
-        $from_file = $from_file_orig;
-        $to_file   = $to_file_orig;
+    my $date = "$year-$month-$day";
+    my $osm = "/var/www/osm.nix.is/archive/$date/Iceland.osm.bz2";
+    if (wantarray) {
+        return ($date, $osm);
     } else {
-        my $osmosis_bbox = bbox_to_osmosis_bbox($bbox);
-        my $from = "$outdir/$year-$month-$day.osm";
-        my $to   = "$outdir/$date.osm";
-
-        my $from_osmosis_cmd = qq[$osmosis --read-xml-$fv $from_file_orig --bounding-box-$fv completeWays=no $osmosis_bbox --write-xml-$fv '$from'];
-        my $to_osmosis_cmd   = qq[$osmosis --read-xml-$tv $to_file_orig --bounding-box-$tv completeWays=no $osmosis_bbox --write-xml-$tv '$to'];
-
-        system $from_osmosis_cmd and die "Can't execute `$from_osmosis_cmd': $!";
-        if (-f $to and not -z $to) {
-            warn "`$to' already exists, no need to generate it";
-        } else {
-            system $to_osmosis_cmd and die "Can't execute `$to_osmosis_cmd': $!";
-        }
-
-        $from_file = $from;
-        $to_file   = $to;
+        return $osm;
     }
+}
 
-    if (not -f $from_file or not -f $to_file) {
-        die "Both input files need to exist:\n" . `du -sh $from_file $to_file`;
-    }
-
-    my $cmd = "$^X $osmdiff20 $from_file $to_file $label.html $label.png $size";
-    system $cmd and die "Can't osmdiff ($!): $cmd";
+sub osm_version
+{
+    my $file = shift;
+    my ($fv) = qx[bzcat $file | head -n2 | grep "^<osm"] =~ /version="(.*?)"/;
+    return $fv;
 }
 
 sub bbox_to_osmosis_bbox

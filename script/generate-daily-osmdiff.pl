@@ -61,6 +61,17 @@ my $i = 1; for my $area (sort keys %area)
 
     # Month
     generate_area($time, -30, '30-month', $bbox, $size, $outdir);
+
+    # Maybe year
+    my $delta = -365;
+    my ($sec, $min, $hour, $mday, $mon, $y, $wday, $yday, $isdst) = localtime $time;
+    my ($year, $month_no_leading, $day_no_leading) = Add_Delta_Days(1900+$y, $mon+1, $mday, $delta);
+    my $month = sprintf "%02i", $month_no_leading;
+    my $day = sprintf "%02i", $day_no_leading;
+    my $from_file_orig = "/var/www/osm.nix.is/archive/$year-$month-$day/Iceland.osm.bz2";
+    if (-f $from_file_orig) {
+        generate_area($time, $delta, '365-year', $bbox, $size, $outdir);
+    }
 }
 
 #
@@ -91,7 +102,9 @@ sub generate_area
     my $day = sprintf "%02i", $day_no_leading;
 
     my $from_file_orig = "/var/www/osm.nix.is/archive/$year-$month-$day/Iceland.osm.bz2";
+    my ($fv) = qx[bzcat $from_file_orig | head -n2 | grep "^<osm"] =~ /version="(.*?)"/;
     my $to_file_orig   = catfile($date_osm_dir, 'Iceland.osm.bz2');
+    my ($tv) = qx[bzcat $to_file_orig | head -n2 | grep "^<osm"] =~ /version="(.*?)"/;
     my ($from_file, $to_file);
 
     unless ($bbox) {
@@ -102,8 +115,8 @@ sub generate_area
         my $from = "$outdir/$year-$month-$day.osm";
         my $to   = "$outdir/$date.osm";
 
-        my $from_osmosis_cmd = qq[$osmosis --read-xml $from_file_orig --bounding-box completeWays=no $osmosis_bbox --write-xml '$from'];
-        my $to_osmosis_cmd   = qq[$osmosis --read-xml $to_file_orig --bounding-box completeWays=no $osmosis_bbox --write-xml '$to'];
+        my $from_osmosis_cmd = qq[$osmosis --read-xml-$fv $from_file_orig --bounding-box-$fv completeWays=no $osmosis_bbox --write-xml-$fv '$from'];
+        my $to_osmosis_cmd   = qq[$osmosis --read-xml-$tv $to_file_orig --bounding-box-$tv completeWays=no $osmosis_bbox --write-xml-$tv '$to'];
 
         system $from_osmosis_cmd and die "Can't execute `$from_osmosis_cmd': $!";
         if (-f $to and not -z $to) {

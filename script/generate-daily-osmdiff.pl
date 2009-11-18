@@ -81,7 +81,6 @@ my @periods = (
 for my $period (@periods) {
     my $delta = $period->{delta};
     my ($date, $base_file)= osm_file_delta_ago($time, $delta);
-    my $v = osm_version($base_file);
 
     if (not -f $base_file and $delta < -30) {
         #warn "Not generating delta $delta";
@@ -92,6 +91,8 @@ for my $period (@periods) {
         $period->{generate} = 0;
         $period->{err} = 1;
     }
+
+    my $v = osm_version($base_file);
 
     my @dirs;
     my $cmd;
@@ -132,7 +133,7 @@ for my $period (@periods) {
     next unless $generate;
 
     my $i = 1; for my $area (sort keys %area) {
-        #warn "Generating $area ($i/" . (scalar keys %area) . ")"; $i++;
+        #warn "Generating $delta $area ($i/" . (scalar keys %area) . ")"; $i++;
         my $size = $area{$area}->{size} // 1024*2;
 
         my $outdir = catdir($date_diff_dir, $area);
@@ -153,7 +154,7 @@ if (-l $latest_diff_dir) {
 }
 symlink($date_diff_dir, $latest_diff_dir) or die "symlink($date_diff_dir, $latest_diff_dir): $!";
 
-if (my @err = grep { $_->{err} } @periods) (
+if (my @err = grep { $_->{err} } @periods) {
     say STDERR "Error came up when when generating osmosis delta $_->{delta}" for @err;
     exit 1;
 }

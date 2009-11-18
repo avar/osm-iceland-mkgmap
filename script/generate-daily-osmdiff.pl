@@ -18,8 +18,9 @@ Getopt::Long::Parser->new(
 my $osmdiff20 = '~/src/osm-applications-utils-planet.osm-perl/osmdiff20.pl';
 my $osmosis   = '~/src/osm-applications-utils-osmosis-trunk/bin/osmosis';
 my $date_osm_dir  = "/var/www/osm.nix.is/archive/$date";
-my $date_diff_dir  = "/var/www/osm.nix.is/diff/archive/$date";
-my $latest_diff_dir = "/var/www/osm.nix.is/diff/latest";
+my $diff_root = "/var/www/osm.nix.is/diff";
+my $date_diff_dir  = "$diff_root/archive/$date";
+my $latest_diff_dir = "$diff_root/latest";
 
 system "mkdir -p $date_diff_dir" and die "mkdir -p $date_diff_dir: $!";
 chdir $date_diff_dir or die "can't chdir($date_diff_dir): $!";

@@ -19,10 +19,14 @@ Getopt::Long::Parser->new(
 my ($year, $month, $day) = $date =~ /^(\d+)-(\d+)-(\d+)$/;
 my $time = DateTime->new(year => $year, month => $month, day => $day)->epoch;
 
-my $osmdiff20 = '~/src/osm-applications-utils-planet.osm-perl/osmdiff20.pl';
-my $osmosis   = '~/src/osm-applications-utils-osmosis-trunk/bin/osmosis';
+my $date = "$year-$month-$day";
+my $real_date = `date --iso-8601`; chomp $real_date;
+
+my $osmdiff20 = '~/src/osm.nix.is/osm-applications-utils-planet.osm-perl/osmdiff20.pl';
+my $osmosis   = '~/src/osm.nix.is/osm-applications-utils-osmosis-trunk/bin/osmosis';
 my $date_osm_dir  = "/var/www/osm.nix.is/archive/$date";
 my $diff_root = "/var/www/osm.nix.is/diff";
+#my $diff_root = "/tmp/diff";
 my $date_diff_dir  = "$diff_root/archive/$date";
 my $latest_diff_dir = "$diff_root/latest";
 
@@ -144,15 +148,18 @@ for my $period (@periods) {
 
 # Delete temporary .osm files
 #
-system qq[find $date_diff_dir -type f -name '*.osm' -exec rm -v {} \\;];
+system qq[find $date_diff_dir -type f -name '*.osm' -exec rm {} \\;];
 
 #
 # link latest to todays generated stuff
 #
-if (-l $latest_diff_dir) {
-    unlink $latest_diff_dir or die "unlink($latest_diff_dir): $!";
+if ($date eq $real_date) {
+    if (-l $latest_diff_dir) {
+        unlink $latest_diff_dir or die "unlink($latest_diff_dir): $!";
+    }
+    symlink($date_diff_dir, $latest_diff_dir) or die "symlink($date_diff_dir, $latest_diff_dir): $!";
 }
-symlink($date_diff_dir, $latest_diff_dir) or die "symlink($date_diff_dir, $latest_diff_dir): $!";
+
 
 if (my @err = grep { $_->{err} } @periods) {
     say STDERR "Error came up when when generating osmosis delta $_->{delta}" for @err;
@@ -171,8 +178,10 @@ sub generate_area
     }
     chdir $outdir or die "can't chdir($outdir): $!";
 
-    my $from = osm_file_delta_ago($time, $delta);
-    my $to = osm_file_delta_ago($time, 0);
+    my ($from, $from_orig) = osm_file_delta_ago($time, $delta);
+    my ($to, $to_orig) = osm_file_delta_ago($time, 0);
+
+    $_ .= '.osm' for $from, $to;
 
     if (not -f $from or not -f $to) {
         die "Both input files need to exist:\n" . `du -sh $from $to`;

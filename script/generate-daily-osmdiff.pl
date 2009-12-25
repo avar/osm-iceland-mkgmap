@@ -100,7 +100,7 @@ for my $period (@periods) {
 
     my @dirs;
     my $cmd;
-    $cmd .= "$osmosis -quiet \\\n";
+    $cmd .= "nice -n 19 $osmosis -quiet \\\n";
     $cmd .= "  --read-xml-$v $base_file \\\n";
     $cmd .= "  --tee-$v " . ((scalar keys %area)) . " \\\n";
     for my $area (sort keys %area) {
@@ -187,7 +187,7 @@ sub generate_area
         die "Both input files need to exist:\n" . `du -sh $from $to`;
     }
 
-    my $cmd = "$^X $osmdiff20 $from $to $label.html $label.png $size > /dev/null";
+    my $cmd = "nice -n 19 $^X $osmdiff20 $from $to $label.html $label.png $size > /dev/null";
     system $cmd and die "Can't osmdiff ($!): $cmd";
 }
 

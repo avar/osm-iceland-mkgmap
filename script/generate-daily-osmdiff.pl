@@ -23,7 +23,7 @@ my $date = "$year-$month-$day";
 my $real_date = `date --iso-8601`; chomp $real_date;
 
 my $osmdiff20 = '~/src/osm.nix.is/osm-applications-utils-planet.osm-perl/osmdiff20.pl';
-my $osmosis   = '~/src/osm.nix.is/osm-applications-utils-osmosis-trunk/bin/osmosis';
+my $osmosis   = '/usr/bin/osmosis';
 my $date_osm_dir  = "/var/www/osm.nix.is/archive/$date";
 my $diff_root = "/var/www/osm.nix.is/diff";
 #my $diff_root = "/tmp/diff";

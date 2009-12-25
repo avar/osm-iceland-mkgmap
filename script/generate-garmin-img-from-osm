@@ -144,7 +144,7 @@ if ($osm =~ /^http/) {
     system qq[wget --user-agent="See http://wiki.openstreetmap.org/index.php/Garmin_map_of_Iceland" -q -O- $osm | bzip2 -d - > $out_file] and die "wget: $!";
 } else {
     if ($osm =~ /\.bz2/) {
-        system qq[bzcat $osm > $out_file] and die "bzcat cp: $!";
+        system qq[nice -n 19 bzcat $osm > $out_file] and die "bzcat cp: $!";
     } else {
         system qq[cp $osm $out_file] and die "cp: $!";
     }
@@ -166,7 +166,7 @@ my $country = (defined $country_name ? " --country-name='$country_name' " : '') 
 
 ## Default
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
-my $cmd = qq[java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar  --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
+my $cmd = qq[nice -n 19 java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar  --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
 system $cmd and die "mkgmap: $!";
 
 ## Cyclemap - see http://wiki.openstreetmap.org/index.php/OSM_Map_On_Garmin/Cycle_map
@@ -175,9 +175,9 @@ chdir $today_dir_cyclemap or die "Can't chdir($today_dir_cyclemap): $!";
 my $preprocess = catfile($script_dir, 'preprocess-osm-with-cvs');
 my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv');
 
-$cmd = qq[$^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null];
+$cmd = qq[nice -n 19 $^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null];
 system $cmd and die "preprocess: $!";
-$cmd = qq[java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --map-features=$cycling_csv  --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
+$cmd = qq[nice -n 19 java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --map-features=$cycling_csv  --generate-sea --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
 system $cmd and die "mkgmap: $!";
 
 #system qq[bzip2 $cycle_out_file];
@@ -196,14 +196,14 @@ if ($osm2mp_dir) {
 
 ## All
 chdir $today_dir_all or die "Can't chdir($today_dir_all): $!";
-system qq[java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar --gmapsupp $today_dir_default/gmapsupp.img $today_dir_cyclemap/gmapsupp.img] and die "mkgmap: $!";
+system qq[nice -n 19 java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar --gmapsupp $today_dir_default/gmapsupp.img $today_dir_cyclemap/gmapsupp.img] and die "mkgmap: $!";
 # urgh, gmapsupp brings some crap along with it, nuke
 map { system "rm $_" } grep { $_ ne 'gmapsupp.img' and $_ !~ /\.tdb$/ } glob "*";
 
 # Compress the .osm and .mp files
-system qq[bzip2 $out_file];
+system qq[nice -n 19 bzip2 $out_file];
 if ($osm2mp_dir) {
-    system qq[bzip2 $out_mp];
+    system qq[nice -n 19 bzip2 $out_mp];
 }
 
 ## Generate VERSION.txt
@@ -231,7 +231,7 @@ my $gmi_dir = '/home/avar/src/osm.nix.is/osm-applications-utils-garmin-mapsource
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
 system "cp ../VERSION.txt ." and die "cp: $!";
 system "unix2dos VERSION.txt" and die "unix2dos: $!";
-system "zip --quiet -j OSM_IS_default.zip [0-9]*img [0-9]*tdb VERSION.txt $gmi_dir/Setup.exe $gmi_dir/garmin-mapsource-installer.ini"  and die "zip: $!";
+system "nice -n 19 zip --quiet -j OSM_IS_default.zip [0-9]*img [0-9]*tdb VERSION.txt $gmi_dir/Setup.exe $gmi_dir/garmin-mapsource-installer.ini"  and die "zip: $!";
 system "rm VERSION.txt" and die "rm: $!";
 
 #

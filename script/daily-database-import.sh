@@ -2,6 +2,10 @@
 
 ## Create temporary DB:
 
+# drop tmp user
+dropdb osmistmp
+dropuser osmistmp
+
 # Create db/user
 echo Creating user/db
 createuser osmistmp -w -S -D -R

@@ -52,4 +52,5 @@ echo "alter user osmis encrypted password 'osmis';" | psql avar
 dropdb osmisdel
 dropuser osmisdel
 
-
+# Regenerate munin stats
+sudo rm -v /var/lib/munin/plugin-state/osm_apidb_*storable

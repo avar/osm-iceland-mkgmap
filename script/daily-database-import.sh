@@ -6,6 +6,9 @@
 dropdb osmistmp
 dropuser osmistmp
 
+dropdb osmisdel
+dropuser osmisdel
+
 # Create db/user
 echo Creating user/db
 createuser osmistmp -w -S -D -R

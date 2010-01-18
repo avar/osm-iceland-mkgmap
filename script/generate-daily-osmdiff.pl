@@ -136,7 +136,7 @@ for my $period (@periods) {
     # Skipping this one
     next unless $generate;
 
-    my $i = 1; for my $area (sort keys %area) {
+    my $i = 1; for my $area (reverse sort keys %area) {
         #warn "Generating $delta $area ($i/" . (scalar keys %area) . ")"; $i++;
         my $size = $area{$area}->{size} // 1024*2;
 

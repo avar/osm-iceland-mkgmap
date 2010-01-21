@@ -3,17 +3,21 @@
 ## Create temporary DB:
 
 # drop tmp user
-dropdb osmistmp
-dropuser osmistmp
+if [ $(psql -A -l|grep -c ^osmistmp) -gt 0 ]; then
+    dropdb osmistmp
+    dropuser osmistmp
+fi
 
-dropdb osmisdel
-dropuser osmisdel
+if [ $(psql -A -l|grep -c ^osmisdel) -gt 0 ]; then
+    dropdb osmisdel
+    dropuser osmisdel
+fi
 
 # Create db/user
 echo Creating user/db
 createuser osmistmp -w -S -D -R
 createdb -E UTF8 -O osmistmp osmistmp
-echo "alter user osmistmp encrypted password 'osmistmp';" | psql avar
+echo "alter user osmistmp encrypted password 'osmistmp';" | psql osmistmp
 psql -d osmistmp < /usr/share/postgresql/8.4/contrib/btree_gist.sql
 
 # Create schema

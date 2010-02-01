@@ -211,7 +211,7 @@ sub osm_file_delta_ago
 sub osm_version
 {
     my $file = shift;
-    my ($fv) = qx[bzcat $file | head -n2 | grep "^<osm"] =~ /version="(.*?)"/;
+    my ($fv) = qx[bzcat $file | head -n2 | grep "^<osm"] =~ /version=['"](.*?)['"]/;
     return $fv;
 }
 

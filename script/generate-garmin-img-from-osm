@@ -230,7 +230,7 @@ close $version;
 my $gmi_dir = '/home/avar/src/osm.nix.is/osm-applications-utils-garmin-mapsource-installer/dist';
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
 system "cp ../VERSION.txt ." and die "cp: $!";
-system "unix2dos VERSION.txt" and die "unix2dos: $!";
+system "$^X -pi -e 's/\\n/\\r\\n/g' VERSION.txt" and die "perl/unix2dos: $!";
 system "nice -n 19 zip --quiet -j OSM_IS_default.zip [0-9]*img [0-9]*tdb VERSION.txt $gmi_dir/Setup.exe $gmi_dir/garmin-mapsource-installer.ini"  and die "zip: $!";
 system "rm VERSION.txt" and die "rm: $!";
 

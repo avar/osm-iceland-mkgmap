@@ -133,8 +133,8 @@ sub read_relations_from_osm
 
     open my $fh, "<", $osm or die "Can't read OSM file `$osm': $!";
 
-    %wayrefs=();
-    %waytypes=();
+    my %wayrefs=();
+    my %waytypes=();
     $in=0;
 
     while (<$fh>) {

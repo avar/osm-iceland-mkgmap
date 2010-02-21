@@ -119,6 +119,9 @@ my $today_dir_all       = catdir($archive_dir, $date, 'all');
 my $today_dir_default   = catdir($archive_dir, $date, 'default');
 my $today_dir_cyclemap  = catdir($archive_dir, $date, 'cyclemap');
 
+# Swap
+system "sudo swapon /swapfile 2>/dev/null";
+
 system "mkdir -p $today_dir";
 system "mkdir -p $today_dir_all";
 system "mkdir -p $today_dir_default";
@@ -254,6 +257,9 @@ if ($date eq $real_date) {
         symlink $from, $to or die "symlink($from, $to): $!";
     }
 }
+
+# Unswap
+system "sudo swapoff /swapfile 2>/dev/null";
 
 sub help
 {

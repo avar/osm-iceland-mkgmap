@@ -30,6 +30,9 @@ my $diff_root = "/var/www/osm.nix.is/diff";
 my $date_diff_dir  = "$diff_root/archive/$date";
 my $latest_diff_dir = "$diff_root/latest";
 
+# Swap
+system "sudo swapon /swapfile 2>/dev/null";
+
 system "mkdir -p $date_diff_dir" and die "mkdir -p $date_diff_dir: $!";
 chdir $date_diff_dir or die "can't chdir($date_diff_dir): $!";
 
@@ -165,6 +168,9 @@ if (my @err = grep { $_->{err} } @periods) {
     say STDERR "Error came up when when generating osmosis delta $_->{delta}" for @err;
     exit 1;
 }
+
+# Unswap
+system "sudo swapoff /swapfile 2>/dev/null";
 
 exit 0;
 

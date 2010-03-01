@@ -192,7 +192,7 @@ if ($osm2mp_dir) {
     # run osm2mp on the .osm file to create a .mp file
     chdir $osm2mp_dir or die "Can't chdir($osm2mp_dir): $!";
 
-    system qq[$^X osm2mp.pl --codepage 1252 $out_file > $out_mp 2>$out_stats];
+    system qq[$^X osm2mp.pl --mapid 13314530 --mapname "Iceland" --waterback --translit $out_file > $out_mp 2>/dev/null];
 }
 
 ## All
@@ -220,7 +220,8 @@ print $version qx[svn info $mkgmap_dir | egrep "^(Last Changed Date|Revision)" |
 
 if ($osm2mp_dir) {
     print $version "\n  osm2mp\n";
-    print $version qx[svn info $osm2mp_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/    /"];
+    #print $version qx[svn info $osm2mp_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/    /"];
+    print $version qx[git --git-dir=$osm2mp_dir/.git show | grep svn-id | perl -pe 's/.*?: //' | sed "s/^/    /"];
 }
 
 close $version;

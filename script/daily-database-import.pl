@@ -5,7 +5,8 @@ use warnings;
 use autodie;
 use Capture::Tiny qw[capture];
 
-my $verbose = $ARGV[0] =~ /^--?v(?:erbose)?$/;
+my $first = $ARGV[0] // '';
+my $verbose = $first =~ /^--?v(?:erbose)?$/;
 my $ok = 1;
 
 sub docmd {

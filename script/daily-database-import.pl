@@ -88,4 +88,4 @@ docmd q[dropuser osmisdel];
 # Regenerate munin stats
 docmd q[sudo rm -v /var/lib/munin/plugin-state/osm_apidb_*storable];
 
-exit $ok ? 0 : 1;
+exit($ok ? 0 : 1);

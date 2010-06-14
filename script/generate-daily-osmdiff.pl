@@ -100,6 +100,7 @@ for my $period (@periods) {
     }
 
     my $v = osm_version($base_file);
+    die "Unable to determine version from $base_file" unless $v;
 
     my @dirs;
     my $cmd;

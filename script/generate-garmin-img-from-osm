@@ -178,7 +178,7 @@ my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv'
 
 $cmd = qq[nice -n 19 $^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null];
 system $cmd and die "preprocess: $!";
-$cmd = qq[nice -n 19 java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --max-jobs --map-features=$cycling_csv  --generate-sea=multipolygon --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
+$cmd = qq[nice -n 19 java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --max-jobs --map-features=$cycling_csv  --generate-sea=multipolygon --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=639 --series-name="OSM Iceland Cycle" --family-name="OSM Iceland Cycle" --tdbfile $country --gmapsupp --route --net $out_file];
 system $cmd and die "mkgmap: $!";
 
 #system qq[bzip2 $cycle_out_file];

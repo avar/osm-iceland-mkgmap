@@ -16,7 +16,7 @@ generate-garmin-img-from-osm - Generate a garmin F<.img> file from an OpenStreet
 
 =head1 SYNOPSIS
 
-    generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/dump/$(date --iso-8601).osm.bz2" --date=$(date --iso-8601) --min-osm-size=$((2*10**6)) --mkgmap-dir=/home/avar/src/mkgmap --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
+    generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/dump/$(date --iso-8601).osm.bz2" --date=$(date --iso-8601) --min-osm-size=$((2*10**6)) --mkgmap-path=/usr/share/mkgmap/mkgmap.jar --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
 
 =head1 DESCRIPTION
 
@@ -24,7 +24,7 @@ Generate maps for L<http://osm.nix.is> in one giant ugly script.
 
 Stick something like this in cron:
 
-    perl /var/www/osm.nix.is/script/generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/dump/$(date --iso-8601).osm.bz2" --date=$(date --iso-8601) --min-osm-size=$((2*10**6)) --mkgmap-dir=/home/avar/src/mkgmap --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
+    perl /var/www/osm.nix.is/script/generate-garmin-img-from-osm --osm "/var/www/osm.nix.is/dump/$(date --iso-8601).osm.bz2" --date=$(date --iso-8601) --min-osm-size=$((2*10**6)) --mkgmap-path=/usr/share/mkgmap/mkgmap.jar --osm2mp-dir=/home/avar/src/osm2mp --mapname 13314530 --description="Iceland OSM" --out-dir /var/www/osm.nix.is/root --out-file=Iceland.osm --out-mp=Iceland.mp
 
 Around an hour or so after running F<download-osm-with-retry>.
 
@@ -45,7 +45,7 @@ will fetch the file with LWP.
 
 Minimum size of the F<.osm> file, for sanity checking.
 
-=item --mkgmap-dir
+=item --mkgmap-path
 
 The path to the mkgmap directory, F<dist/mkgmap.jar> should be under
 it.
@@ -87,7 +87,7 @@ Getopt::Long::Parser->new(
     'h|help'         => \my $help,
     'osm=s'          => \my $osm,
     'min-osm-size=s' => \my $min_osm_size,
-    'mkgmap-dir=s'   => \my $mkgmap_dir,
+    'mkgmap-path=s'  => \my $mkgmap_path,
     'mapname=s'      => \my $mapname,
     'country-name=s' => \my $country_name,
     'country-abbr=s' => \my $country_abbr, # IOC or UNDP code??
@@ -167,7 +167,7 @@ my $country = (defined $country_name ? " --country-name='$country_name' " : '') 
 
 ## Default
 chdir $today_dir_default or die "Can't chdir($today_dir_default): $!";
-my $cmd = qq[nice -n 19 java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar --max-jobs --generate-sea=multipolygon --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
+my $cmd = qq[nice -n 19 java -Xmx1024M -jar $mkgmap_path --max-jobs --generate-sea=multipolygon --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description" --latin1 --family-id=639 --series-name="OSM Iceland" --family-name="OSM Iceland" --tdbfile $country --gmapsupp --route --net $out_file];
 system $cmd and die "mkgmap: $!";
 
 ## Cyclemap - see http://wiki.openstreetmap.org/index.php/OSM_Map_On_Garmin/Cycle_map
@@ -178,7 +178,7 @@ my $cycling_csv = catfile(catdir($script_dir, 'res'), 'cycling-map-features.csv'
 
 $cmd = qq[nice -n 19 $^X $preprocess --csv $cycling_csv --osm $out_file --out $cycle_out_file >/dev/null];
 system $cmd and die "preprocess: $!";
-$cmd = qq[nice -n 19 java -Xmx1024M -enableassertions -jar $mkgmap_dir/dist/mkgmap.jar --max-jobs --map-features=$cycling_csv  --generate-sea=multipolygon --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=639 --series-name="OSM Iceland Cycle" --family-name="OSM Iceland Cycle" --tdbfile $country --gmapsupp --route --net $out_file];
+$cmd = qq[nice -n 19 java -Xmx1024M -enableassertions -jar $mkgmap_path --max-jobs --map-features=$cycling_csv  --generate-sea=multipolygon --overview-mapname=$mapname --mapname=] . ($mapname+1) . qq[ --description="$description cyclemap" --latin1 --family-id=640 --series-name="OSM Iceland Cycle" --family-name="OSM Iceland Cycle" --tdbfile $country --gmapsupp --route --net $out_file];
 system $cmd and die "mkgmap: $!";
 
 #system qq[bzip2 $cycle_out_file];
@@ -197,7 +197,7 @@ if ($osm2mp_dir) {
 
 ## All
 chdir $today_dir_all or die "Can't chdir($today_dir_all): $!";
-system qq[nice -n 19 java -Xmx1024M -jar $mkgmap_dir/dist/mkgmap.jar --max-jobs --gmapsupp $today_dir_default/gmapsupp.img $today_dir_cyclemap/gmapsupp.img] and die "mkgmap: $!";
+system qq[nice -n 19 java -Xmx1024M -jar $mkgmap_path --max-jobs --gmapsupp $today_dir_default/gmapsupp.img $today_dir_cyclemap/gmapsupp.img] and die "mkgmap: $!";
 # urgh, gmapsupp brings some crap along with it, nuke
 map { system "rm $_" } grep { $_ ne 'gmapsupp.img' and $_ !~ /\.tdb$/ } glob "*";
 
@@ -215,8 +215,8 @@ print $version "This map package from http://osm.nix.is was generated using\n";
 print $version "OpenStreetMap data from $date\n";
 print $version "\n";
 print $version "Versions of programs used to build the package:\n";
-print $version "  mkgmap\n";
-print $version qx[svn info $mkgmap_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/    /"];
+#print $version "  mkgmap\n";
+#print $version qx[svn info $mkgmap_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/    /"];
 
 if ($osm2mp_dir) {
     print $version "\n  osm2mp\n";

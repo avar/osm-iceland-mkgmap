@@ -215,8 +215,8 @@ print $version "This map package from http://osm.nix.is was generated using\n";
 print $version "OpenStreetMap data from $date\n";
 print $version "\n";
 print $version "Versions of programs used to build the package:\n";
-#print $version "  mkgmap\n";
-#print $version qx[svn info $mkgmap_dir | egrep "^(Last Changed Date|Revision)" | sed "s/^/    /"];
+print $version "  mkgmap\n";
+print $version qx[dpkg -l | grep mkgmap | tr ' ' '\\n' | grep svn | sed "s/^/    /"];
 
 if ($osm2mp_dir) {
     print $version "\n  osm2mp\n";

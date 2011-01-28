@@ -79,7 +79,7 @@ docmd q[rake db:migrate];
 
 # Import Iceland.osm
 #echo Importing data
-docmd q[osmosis --read-xml-0.6 /var/www/osm.nix.is/latest/Iceland.osm.bz2 --write-apidb-0.6 populateCurrentTables=yes host="localhost" database="osmistmp" user="osmistmp" password="osmistmp" validateSchemaVersion=no];
+docmd q[/home/avar/src/osm.nix.is/osmosis/bin/osmosis --read-xml-0.6 /var/www/osm.nix.is/latest/Iceland.osm.bz2 --write-apidb-0.6 populateCurrentTables=yes host="localhost" database="osmistmp" user="osmistmp" password="osmistmp" validateSchemaVersion=no];
 
 ## Rename it & delete
 # old -> del

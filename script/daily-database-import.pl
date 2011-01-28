@@ -86,8 +86,10 @@ docmd q[echo 'alter user osmistmp rename to osmis;' | psql avar];
 docmd q[echo "alter user osmis encrypted password 'osmis';" | psql avar];
 
 # del old
-docmd q[dropdb osmisdel];
-docmd q[dropuser osmisdel];
+if (my ($db, $user) = db_and_owner("osmisdel")) {
+    docmd q[dropdb osmisdel];
+    docmd q[dropuser osmisdel];
+}
 
 # Regenerate munin stats
 my $nuke = '/var/lib/munin/plugin-state/osm_apidb_*storable';

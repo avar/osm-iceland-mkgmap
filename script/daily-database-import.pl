@@ -52,7 +52,7 @@ docmd q[createdb -E UTF8 -O osmistmp osmistmp];
 docmd q[echo "alter user osmistmp encrypted password 'osmistmp';" | psql -q osmistmp];
 
 # Create schema
-docmd q[psql -q -d osmistmp < /usr/share/postgresql/8.4/contrib/btree_gist.sql];
+docmd q[psql -q -d osmistmp < /usr/share/postgresql/9.0/contrib/btree_gist.sql];
 
 chdir "/home/avar/src/osm.nix.is/osm-sites-rails_port";
 
@@ -63,6 +63,8 @@ docmd q[echo "  username: osmistmp"  >> config/database.yml];
 docmd q[echo "  password: osmistmp"  >> config/database.yml];
 docmd q[echo "  host: localhost"     >> config/database.yml];
 docmd q[echo "  encoding: utf8"      >> config/database.yml];
+
+docmd q[cp config/example.application.yml config/application.yml];
 
 # migrate!
 docmd q[rake db:migrate];

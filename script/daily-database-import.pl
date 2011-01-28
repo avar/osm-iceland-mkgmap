@@ -47,7 +47,7 @@ for my $drop (qw(osmistmp osmisdel)) {
 }
 
 # Create db
-docmd q[createuser osmistmp -w -S -D -R];
+docmd q[createuser osmistmp -w -s];
 docmd q[createdb -E UTF8 -O osmistmp osmistmp];
 docmd q[echo "alter user osmistmp encrypted password 'osmistmp';" | psql -q osmistmp];
 
@@ -95,6 +95,13 @@ if (my ($db, $user) = db_and_owner("osmisdel")) {
 my $nuke = '/var/lib/munin/plugin-state/osm_apidb_*storable';
 if (glob $nuke) {
     docmd qq[sudo rm -v $nuke];
+}
+
+# Grant permissions. THIS SUCKS
+{
+    chomp(my @lines = qx[psql -c "\\\\dt" osmis]);
+    my @tables = map { / ^ \s+ \S+ \s+ \| \s+ (\S+) /x; $1 } grep { /table/ } @lines;
+    docmd qq[echo "GRANT ALL PRIVILEGES on $_ TO PUBLIC;" | psql -q osmis] for @tables;
 }
 
 exit($ok ? 0 : 1);

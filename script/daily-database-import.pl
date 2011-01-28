@@ -38,20 +38,12 @@ sub docmd {
 
 ## Create temporary DB:
 
-# drop tmp user
-
-chomp(my $user_exists = qx[psql -A -l|grep -c ^osmistmp]);
-
-if ($user_exists != 0) {
-    docmd "dropdb osmistmp";
-    docmd "dropuser osmistmp";
-}
-
-chomp($user_exists = qx[psql -A -l|grep -c ^osmisdel]);
-
-if ($user_exists != 0) {
-    docmd "dropdb osmisdel";
-    docmd "dropuser osmisdel";
+# drop tmp users
+for my $drop (qw(osmistmp osmisdel)) {
+    if (my ($db, $user) = db_and_owner($drop)) {
+        docmd "dropdb $db";
+        docmd "dropuser $user";
+    }
 }
 
 # Create db
@@ -83,8 +75,10 @@ docmd q[/home/avar/src/osm.nix.is/osmosis/bin/osmosis --read-xml-0.6 /var/www/os
 
 ## Rename it & delete
 # old -> del
-docmd q[echo 'alter database osmis rename to osmisdel;' | psql avar];
-docmd q[echo 'alter user osmis rename to osmisdel;' | psql avar];
+if (my ($db, $user) = db_and_owner("osmis")) {
+    docmd q[echo 'alter database osmis rename to osmisdel;' | psql avar];
+    docmd q[echo 'alter user osmis rename to osmisdel;' | psql avar];
+}
 
 # tmp -> new
 docmd q[echo 'alter database osmistmp rename to osmis;' | psql avar];
@@ -96,6 +90,23 @@ docmd q[dropdb osmisdel];
 docmd q[dropuser osmisdel];
 
 # Regenerate munin stats
-docmd q[sudo rm -v /var/lib/munin/plugin-state/osm_apidb_*storable];
+my $nuke = '/var/lib/munin/plugin-state/osm_apidb_*storable';
+if (glob $nuke) {
+    docmd qq[sudo rm -v $nuke];
+}
 
 exit($ok ? 0 : 1);
+
+sub db_and_owner {
+    my ($db) = @_;
+
+    chomp(my @out = qx[psql -l]);
+
+    for (@out) {
+        if (/^ \s+ ($db) \s+ \| \s+ (\S+) \b/) {
+            return ($1, $2);
+        }
+    }
+
+    return;
+}

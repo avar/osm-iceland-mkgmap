@@ -3,26 +3,34 @@ use 5.010;
 use strict;
 use warnings;
 use autodie;
+use Getopt::Long;
 use Capture::Tiny qw[capture];
 
-my $first = $ARGV[0] // '';
-my $verbose = $first =~ /^--?v(?:erbose)?$/;
+Getopt::Long::Parser->new(
+        config => [ qw< bundling no_ignore_case no_require_order > ],
+)->getoptions(
+    'v|verbose' => \my $verbose,
+    'd|dry-run' => \my $dry_run,
+);
+
 my $ok = 1;
 
 sub docmd {
     my $cmd = shift;
     my $ret;
-    say "Executing $cmd" if $verbose;
+    say $cmd if $verbose;
 
-    my ($stdout, $stderr) = capture {
-        $ret = system $cmd;
-    };
+    unless ($dry_run) {
+        my ($stdout, $stderr) = capture {
+            $ret = system $cmd;
+        };
 
-    if ($ret) {
-        $ok = 0;
-        print STDERR "Command '$cmd' failed with code '$ret'";
-        print STDOUT $stdout;
-        print STDERR $stderr;
+        if ($ret) {
+            $ok = 0;
+            print STDERR "Command '$cmd' failed with code '$ret'";
+            print STDOUT $stdout;
+            print STDERR $stderr;
+        }
     }
 
     return;

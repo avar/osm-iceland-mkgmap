@@ -12,6 +12,7 @@ Getopt::Long::Parser->new(
     'v|verbose' => \my $verbose,
     'd|dry-run' => \my $dry_run,
     'b|base-name' => \(my $base_name = 'osmis'),
+    'o|osm-file' => \(my $osm_file = '/var/www/osm.nix.is/latest/Iceland.osm.bz2'),
 );
 
 my $ok = 1;
@@ -72,7 +73,7 @@ docmd q[rake db:migrate];
 
 # Import Iceland.osm
 #echo Importing data
-docmd qq[/home/avar/src/osm.nix.is/osmosis/bin/osmosis --read-xml-0.6 /var/www/osm.nix.is/latest/Iceland.osm.bz2 --write-apidb-0.6 populateCurrentTables=yes host="localhost" database="${base_name}tmp" user="${base_name}tmp" password="${base_name}tmp" validateSchemaVersion=no];
+docmd qq[/home/avar/src/osm.nix.is/osmosis/bin/osmosis --read-xml-0.6 $osm_file --write-apidb-0.6 populateCurrentTables=yes host="localhost" database="${base_name}tmp" user="${base_name}tmp" password="${base_name}tmp" validateSchemaVersion=no];
 
 ## Rename it & delete
 # old -> del

@@ -11,6 +11,7 @@ Getopt::Long::Parser->new(
 )->getoptions(
     'v|verbose' => \my $verbose,
     'd|dry-run' => \my $dry_run,
+    'b|base-name' => \(my $base_name = 'osmis'),
 );
 
 my $ok = 1;
@@ -39,7 +40,7 @@ sub docmd {
 ## Create temporary DB:
 
 # drop tmp users
-for my $drop (qw(osmistmp osmisdel)) {
+for my $drop ("${base_name}tmp", "${base_name}del") {
     if (my ($db, $user) = db_and_owner($drop)) {
         docmd "dropdb $db";
         docmd "dropuser $user";
@@ -47,22 +48,22 @@ for my $drop (qw(osmistmp osmisdel)) {
 }
 
 # Create db
-docmd q[createuser osmistmp -w -s];
-docmd q[createdb -E UTF8 -O osmistmp osmistmp];
-docmd q[echo "alter user osmistmp encrypted password 'osmistmp';" | psql -q osmistmp];
+docmd qq[createuser ${base_name}tmp -w -s];
+docmd qq[createdb -E UTF8 -O ${base_name}tmp ${base_name}tmp];
+docmd qq[echo "alter user ${base_name}tmp encrypted password '${base_name}tmp';" | psql -q ${base_name}tmp];
 
 # Create schema
-docmd q[psql -q -d osmistmp < /usr/share/postgresql/9.0/contrib/btree_gist.sql];
+docmd qq[psql -q -d ${base_name}tmp < /usr/share/postgresql/9.0/contrib/btree_gist.sql];
 
 chdir "/home/avar/src/osm.nix.is/osm-sites-rails_port";
 
-docmd q[echo "development:"           > config/database.yml];
-docmd q[echo "  adapter: postgresql" >> config/database.yml];
-docmd q[echo "  database: osmistmp"  >> config/database.yml];
-docmd q[echo "  username: osmistmp"  >> config/database.yml];
-docmd q[echo "  password: osmistmp"  >> config/database.yml];
-docmd q[echo "  host: localhost"     >> config/database.yml];
-docmd q[echo "  encoding: utf8"      >> config/database.yml];
+docmd qq[echo "development:"           > config/database.yml];
+docmd qq[echo "  adapter: postgresql" >> config/database.yml];
+docmd qq[echo "  database: ${base_name}tmp"  >> config/database.yml];
+docmd qq[echo "  username: ${base_name}tmp"  >> config/database.yml];
+docmd qq[echo "  password: ${base_name}tmp"  >> config/database.yml];
+docmd qq[echo "  host: localhost"     >> config/database.yml];
+docmd qq[echo "  encoding: utf8"      >> config/database.yml];
 
 docmd q[cp config/example.application.yml config/application.yml];
 
@@ -71,37 +72,39 @@ docmd q[rake db:migrate];
 
 # Import Iceland.osm
 #echo Importing data
-docmd q[/home/avar/src/osm.nix.is/osmosis/bin/osmosis --read-xml-0.6 /var/www/osm.nix.is/latest/Iceland.osm.bz2 --write-apidb-0.6 populateCurrentTables=yes host="localhost" database="osmistmp" user="osmistmp" password="osmistmp" validateSchemaVersion=no];
+docmd qq[/home/avar/src/osm.nix.is/osmosis/bin/osmosis --read-xml-0.6 /var/www/osm.nix.is/latest/Iceland.osm.bz2 --write-apidb-0.6 populateCurrentTables=yes host="localhost" database="${base_name}tmp" user="${base_name}tmp" password="${base_name}tmp" validateSchemaVersion=no];
 
 ## Rename it & delete
 # old -> del
-if (my ($db, $user) = db_and_owner("osmis")) {
-    docmd q[echo 'alter database osmis rename to osmisdel;' | psql avar];
-    docmd q[echo 'alter user osmis rename to osmisdel;' | psql avar];
+if (my ($db, $user) = db_and_owner("${base_name}")) {
+    docmd qq[echo 'alter database ${base_name} rename to ${base_name}del;' | psql avar];
+    docmd qq[echo 'alter user ${base_name} rename to ${base_name}del;' | psql avar];
 }
 
 # tmp -> new
-docmd q[echo 'alter database osmistmp rename to osmis;' | psql avar];
-docmd q[echo 'alter user osmistmp rename to osmis;' | psql avar];
-docmd q[echo "alter user osmis encrypted password 'osmis';" | psql avar];
+docmd qq[echo 'alter database ${base_name}tmp rename to ${base_name};' | psql avar];
+docmd qq[echo 'alter user ${base_name}tmp rename to ${base_name};' | psql avar];
+docmd qq[echo "alter user ${base_name} encrypted password '${base_name}';" | psql avar];
 
 # del old
-if (my ($db, $user) = db_and_owner("osmisdel")) {
-    docmd q[dropdb osmisdel];
-    docmd q[dropuser osmisdel];
+if (my ($db, $user) = db_and_owner("${base_name}del")) {
+    docmd qq[dropdb ${base_name}del];
+    docmd qq[dropuser ${base_name}del];
 }
 
 # Regenerate munin stats
-my $nuke = '/var/lib/munin/plugin-state/osm_apidb_*storable';
-if (glob $nuke) {
-    docmd qq[sudo rm -v $nuke];
+if ($base_name eq 'osmis') {
+    my $nuke = '/var/lib/munin/plugin-state/osm_apidb_*storable';
+    if (glob $nuke) {
+        docmd qq[sudo rm -v $nuke];
+    }
 }
 
 # Grant permissions. THIS SUCKS
 {
-    chomp(my @lines = qx[psql -c "\\\\dt" osmis]);
+    chomp(my @lines = qx[psql -c "\\\\dt" ${base_name}]);
     my @tables = map { / ^ \s+ \S+ \s+ \| \s+ (\S+) /x; $1 } grep { /table/ } @lines;
-    docmd qq[echo "GRANT ALL PRIVILEGES on $_ TO PUBLIC;" | psql -q osmis] for @tables;
+    docmd qq[echo "GRANT ALL PRIVILEGES on $_ TO PUBLIC;" | psql -q ${base_name}] for @tables;
 }
 
 exit($ok ? 0 : 1);

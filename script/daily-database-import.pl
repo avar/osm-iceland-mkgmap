@@ -119,7 +119,7 @@ sub db_and_owner {
     chomp(my @out = qx[psql -l]);
 
     for (@out) {
-        if (/^ \s+ ($db) \s+ \| \s+ (\S+) \b/) {
+        if (/^ \s+ ($db) \s+ \| \s+ (\S+) \b/x) {
             return ($1, $2);
         }
     }

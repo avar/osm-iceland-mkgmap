@@ -32,10 +32,11 @@ sub docmd {
             print STDERR "Command '$cmd' failed with code '$ret'";
             print STDOUT $stdout;
             print STDERR $stderr;
+            return;
         }
     }
 
-    return;
+    return 1;
 }
 
 ## Create temporary DB:
@@ -73,7 +74,7 @@ docmd q[rake db:migrate];
 
 # Import Iceland.osm
 #echo Importing data
-docmd qq[/home/avar/src/osm.nix.is/osmosis/bin/osmosis --read-xml-0.6 $osm_file --write-apidb-0.6 populateCurrentTables=yes host="localhost" database="${base_name}tmp" user="${base_name}tmp" password="${base_name}tmp" validateSchemaVersion=no];
+docmd qq[/home/avar/src/osm.nix.is/osmosis/bin/osmosis --read-xml-0.6 $osm_file --write-apidb-0.6 populateCurrentTables=yes host="localhost" database="${base_name}tmp" user="${base_name}tmp" password="${base_name}tmp" validateSchemaVersion=no] or die "Can't osmosis it";
 
 ## Rename it & delete
 # old -> del

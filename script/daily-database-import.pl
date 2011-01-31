@@ -88,7 +88,7 @@ docmd qq[echo 'alter user ${base_name}tmp rename to ${base_name};' | psql avar];
 docmd qq[echo "alter user ${base_name} encrypted password '${base_name}';" | psql avar];
 
 # Drop the temporary user
-docmd qq[dropuser ${base_name}_tmp];
+docmd qq[dropuser ${base_name}tmp];
 
 # del old
 if (my ($db, $user) = db_and_owner("${base_name}del")) {

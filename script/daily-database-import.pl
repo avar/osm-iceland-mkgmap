@@ -11,8 +11,8 @@ Getopt::Long::Parser->new(
 )->getoptions(
     'v|verbose' => \my $verbose,
     'd|dry-run' => \my $dry_run,
-    'b|base-name' => \(my $base_name = 'osmis'),
-    'o|osm-file' => \(my $osm_file = '/var/www/osm.nix.is/latest/Iceland.osm.bz2'),
+    'b|base-name=s' => \(my $base_name = 'osmis'),
+    'o|osm-file=s' => \(my $osm_file = '/var/www/osm.nix.is/latest/Iceland.osm.bz2'),
 );
 
 my $ok = 1;

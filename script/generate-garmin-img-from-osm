@@ -1,5 +1,6 @@
 #!/usr/bin/env perl
-use Modern::Perl;
+use v5.12.0;
+use warnings;
 
 use Pod::Usage ();
 use Getopt::Long ();

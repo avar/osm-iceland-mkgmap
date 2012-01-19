@@ -22,7 +22,7 @@ my $time = DateTime->new(year => $year, month => $month, day => $day)->epoch;
 my $date = "$year-$month-$day";
 my $real_date = `date --iso-8601`; chomp $real_date;
 
-my $osmdiff20 = '~/src/osm.nix.is/osm-applications-utils-planet.osm-perl/osmdiff20.pl';
+my $useractivity = '~/src/osm.nix.is/osm-applications-utils-planet.osm-perl/useractivity.pl';
 my $osmosis   = '~/src/osm.nix.is/osm-applications-utils-osmosis-trunk/bin/osmosis';
 my $date_osm_dir  = "/var/www/osm.nix.is/archive/$date";
 my $diff_root = "/var/www/osm.nix.is/diff";
@@ -188,7 +188,7 @@ sub generate_area
         die "Both input files need to exist:\n" . `du -sh $from $to`;
     }
 
-    my $cmd = "nice -n 19 $^X $osmdiff20 $from $to $label.html $label.png $size > /dev/null";
+    my $cmd = "nice -n 19 $^X $useractivity $from $to $label.html P $size > /dev/null";
     system $cmd and die "Can't osmdiff ($!): $cmd";
 }
 
